@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile Page</title>
+    <style>
+        /* Basic reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Layout and styling */
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            background-color: #f0f2f5;
+            font-family: Arial, sans-serif;
+            min-height: 100vh;
+            color: #333;
+            padding-top: 60px;
+            /* Add padding to account for fixed navbar */
+        }
+
+        /* Top Bar Styling */
+        .top-bar {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background-color: #4c87ae;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            /* Adjust padding for consistent alignment */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .top-bar h1 {
+            font-size: 1.5em;
+            margin: 0;
+        }
+
+        .top-bar button {
+            background-color: #fff;
+            color: #4c87ae;
+            border: none;
+            padding: 10px 15px;
+            font-size: 1em;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .top-bar button:hover {
+            background-color: #ddd;
+        }
+
+        /* Profile Container */
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-top: 120px;
+            /* Increased margin to add more space */
+            margin: 120px auto;
+        }
+
+
+        h2 {
+            font-size: 1.5em;
+            margin: 20px 0;
+            color: #333;
+        }
+
+        /* Profile Picture Section */
+        .profile-picture {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .profile-picture img {
+            border-radius: 50%;
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border: 3px solid #4c87ae;
+        }
+
+        /* Profile section */
+        .profile-info {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            /* Add spacing between elements */
+        }
+
+        .profile-item p {
+            margin-right: 10px;
+            /* Space between label and value */
+        }
+
+        .profile-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            /* Add some space between elements within each item */
+        }
+
+        .profile-info p {
+            font-size: 1.2em;
+            margin: 10px 0;
+        }
+
+        .profile-info span {
+            font-weight: bold;
+            color: #4c87ae;
+        }
+
+        .profile-info button {
+            background-color: #4c87ae;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            font-size: 1em;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 10px;
+        }
+
+        .profile-info button:hover {
+            background-color: #639ec5;
+        }
+
+        .profile-item input {
+            font-size: 1.2em;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: 100%;
+        }
+
+        .profile-item button {
+            background-color: #4c87ae;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            font-size: 1em;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .profile-item button:hover {
+            background-color: #6caad3;
+        }
+
+        /* Input fields for editing */
+        input[type="text"],
+        input[type="email"],
+        input[type="file"] {
+            font-size: 1.2em;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: 100%;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <h1>Account</h1>
+        <a href="index.html"><button>
+                <h3>Homepage</h3>
+            </button></a>
+    </div>
+
+    <!-- Profile Content -->
+    <div class="container">
+        <h2>Profile Information</h2>
+
+        <!-- Profile Picture Section -->
+        <div class="profile-picture">
+            <img id="profile-picture" src="/default_pfp.png" alt="Profile Picture">
+        </div>
+
+        <!-- Profile Section -->
+        <div class="profile-info">
+            <div class="profile-item">
+                <p>Name: <span id="profile-name">Your Name</span></p>
+                <input type="text" id="edit-name" style="display: none;" value="Your Name">
+                <button id="name-button" onclick="toggleEdit('name')">
+                    <h3>Edit Name</h3>
+                </button>
+            </div>
+
+            <div class="profile-item">
+                <p>Email: <span id="profile-email">your.email@example.com</span></p>
+                <input type="email" id="edit-email" style="display: none;" value="your.email@example.com">
+                <button id="email-button" onclick="toggleEdit('email')">
+                    <h3>Edit Email</h3>
+                </button>
+            </div>
+
+            <!-- Profile Picture Edit -->
+            <div class="profile-item">
+                <input type="file" id="edit-picture" style="display: none;" accept="image/*">
+                <button id="picture-button" onclick="toggleEditPicture()">
+                    <h3>Edit Profile Picture</h3>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Function to toggle edit mode for name and email
+        function toggleEdit(field) {
+            const profileField = document.getElementById('profile-' + field);
+            const editField = document.getElementById('edit-' + field);
+            const button = document.getElementById(field + '-button');
+
+            if (editField.style.display === "none") {
+                // Show the input field and hide the span
+                editField.style.display = "block";
+                profileField.style.display = "none";
+                button.innerHTML = "<h3>Save " + field.charAt(0).toUpperCase() + field.slice(1) + "</h3>"; // Change button text to Save
+            } else {
+                // Hide the input field and show the updated span
+                profileField.style.display = "block";
+                profileField.textContent = editField.value;
+                editField.style.display = "none";
+                button.innerHTML = "<h3>Edit " + field.charAt(0).toUpperCase() + field.slice(1) + "</h3>"; // Change button text back to Edit
+            }
+        }
+
+        // Function to toggle edit mode for profile picture
+        function toggleEditPicture() {
+            const editPicture = document.getElementById('edit-picture');
+            const button = document.getElementById('picture-button');
+
+            // If file input is not visible, show it
+            if (editPicture.style.display === "none") {
+                editPicture.style.display = "block";
+                button.innerHTML = "<h3>Save Profile Picture</h3>";  // Change button text
+            } else {
+                // When a file is chosen, update the profile picture
+                const file = editPicture.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        document.getElementById('profile-picture').src = e.target.result;
+                    }
+                    reader.readAsDataURL(file);
+                }
+                editPicture.style.display = "none";  // Hide the file input after selecting a picture
+                button.innerHTML = "<h3>Edit Profile Picture</h3>";  // Change button text back to Edit
+            }
+        }
+    </script>
+
+</body>
+
+</html>

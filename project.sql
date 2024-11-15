@@ -191,12 +191,16 @@ CREATE TABLE `Message` (
 --
 
 CREATE TABLE `Post` (
-  `PostID` int(50) NOT NULL,
+  `PostID` int(50) NOT NULL AUTO_INCREMENT,
   `MemberID` int(50) NOT NULL,
   `PostText` text NOT NULL,
-  `PostImages` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`PostImages`)),
-  `PostedAt` date NOT NULL,
-  `Visibility` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`Visibility`))
+  `PostImages` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT '[]' CHECK (json_valid(`PostImages`)),
+  `Visibility` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT '{}' CHECK (json_valid(`Visibility`)),
+  `PostType` enum('text', 'image', 'video') NOT NULL DEFAULT 'text',
+  `PostedAt` datetime NOT NULL,
+  PRIMARY KEY (`PostID`),
+  KEY `MemberID` (`MemberID`),
+  CONSTRAINT `post_ibfk_1` FOREIGN KEY (`MemberID`) REFERENCES `Member` (`MemberID`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------

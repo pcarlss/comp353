@@ -68,7 +68,7 @@ CREATE TABLE `Comment` (
 --
 
 CREATE TABLE `Event` (
-  `EventID` int(50) NOT NULL,
+  `EventID` int(50) NOT NULL AUTO_INCREMENT,
   `EventName` varchar(50) NOT NULL,
   `EventDesc` varchar(50) NOT NULL,
   `EventCreatorID` int(50) NOT NULL,
@@ -83,7 +83,7 @@ CREATE TABLE `Event` (
 --
 
 CREATE TABLE `EventOptions` (
-  `OptionID` int(50) NOT NULL,
+  `OptionID` int(50) NOT NULL AUTO_INCREMENT,
   `EventID` int(50) NOT NULL,
   `Date_Time` datetime NOT NULL,
   `Location` varchar(50) NOT NULL,

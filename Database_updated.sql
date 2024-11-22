@@ -85,8 +85,7 @@ CREATE TABLE `Event` (
 CREATE TABLE `EventOptions` (
   `OptionID` int(50) NOT NULL AUTO_INCREMENT,
   `EventID` int(50) NOT NULL,
-  `Date_Time` datetime NOT NULL,
-  `Location` varchar(50) NOT NULL,
+  `Date_Time_Location` varchar(50) NOT NULL,
   `Votes` int(50) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 

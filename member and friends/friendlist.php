@@ -7,14 +7,7 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
     exit;
 }
 
-// Database connection settings
-$host = 'localhost';
-$dbname = 'project';
-$dbUsername = 'root';
-$dbPassword = '';  // Assuming no password is set
-
-// Create a MySQLi instance
-$conn = new mysqli($host, $dbUsername, $dbPassword, $dbname);
+$conn = new mysqli('localhost', 'root', '', 'project');
 
 // Check the connection
 if ($conn->connect_error) {

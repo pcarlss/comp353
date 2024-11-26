@@ -1,3 +1,8 @@
+<?php
+require 'session/db_connect.php';
+session_start();
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -20,7 +25,6 @@
             background-color: #f0f2f5;
             font-family: Arial, sans-serif;
             padding-top: 120px;
-            /* Add padding to account for fixed navbar */
             overflow-y: scroll;
         }
 
@@ -144,8 +148,8 @@
             border-radius: 5px;
             cursor: pointer;
         }
-         /* Styles for the success banner */
-         .success-banner {
+
+        .success-banner {
             background-color: #28a745;
             color: white;
             padding: 10px;
@@ -163,128 +167,117 @@
     <!-- Top Bar -->
     <div class="top-bar">
         <h1>Home</h1>
-        <a href="account_setup.html"><button>
-                <h3>Log In or Sign Up</h3>
-            </button></a>
+        <a href="community_tab.php" style="margin-left: 70%">
+            <button>
+                <h3>Join a Community</h3>
+            </button>
+        </a>
+        <?php
+        if (isset($_SESSION['username'])) {
+            echo '<a href="profile.php"><button><h3>Profile</h3></button></a>';
+        } else {
+            echo '<a href="account_setup.php"><button><h3>Log In or Sign Up</h3></button></a>';
+        }
+        ?>
     </div>
 
+    <!-- Post Form -->
     <div class="post-form">
-    <h3>Create a New Post</h3>
-    <form action="add_post.php" method="POST" enctype="multipart/form-data">
-        <textarea name="post_content" placeholder="What's on your mind?" required></textarea>
+        <h3>Create a New Post</h3>
+        <form action="interactions/add_post.php" method="POST" enctype="multipart/form-data">
+            <textarea name="post_content" placeholder="What's on your mind?" required></textarea>
 
-        <!-- Dropdown to select post type -->
-        <label for="post_type">Post Type:</label>
-        <select name="post_type" id="post_type" onchange="toggleFileInput(this.value)">
-            <option value="text">Text</option>
-            <option value="image">Image</option>
-            <option value="video">Video</option>
-        </select>
+            <label for="post_type">Post Type:</label>
+            <select name="post_type" id="post_type" onchange="toggleFileInput(this.value)">
+                <option value="text">Text</option>
+                <option value="image">Image</option>
+                <option value="video">Video</option>
+            </select>
 
-        <!-- File input for image or video -->
-        <div id="file_input" style="display: none;">
-            <input type="file" name="media_file" accept="image/*,video/*">
-        </div>
+            <div id="file_input" style="display: none;">
+                <input type="file" name="media_file" accept="image/*,video/*">
+            </div>
 
-        <button type="submit">Post</button>
-    </form>
-</div>
-  <!-- Success Message Banner -->
-  <?php if (isset($_GET['message'])): ?>
+            <button type="submit">Post</button>
+        </form>
+    </div>
+
+    <!-- Success Message Banner -->
+    <?php if (isset($_GET['message'])) : ?>
         <div class="success-banner">
             <?php echo htmlspecialchars($_GET['message']); ?>
         </div>
     <?php endif; ?>
 
-    
-<div class="container">
-    
-    <?php
-    $conn = new mysqli('localhost', 'root', '', 'project');
+    <!-- Posts and Comments -->
+    <div class="container">
+        <?php
+        $result = $conn->query("SELECT Post.*, Member.username FROM Post JOIN Member ON Post.memberid = Member.memberid ORDER BY Post.PostedAt DESC");
 
-    if ($conn->connect_error) {
-        die("Connection failed: " . $conn->connect_error);
-    }
+        if ($result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                echo '<div class="post" onclick="toggleCommentSection(this)">';
+                echo '<h3>Post by ' . $row['username'] . '</h3>';
 
-    $result = $conn->query("SELECT * FROM Post ORDER BY PostedAt DESC");
+                if (!empty($row['PostText'])) {
+                    echo '<p>' . htmlspecialchars($row['PostText']) . '</p>';
+                }
 
-    if ($result->num_rows > 0) {
-        while($row = $result->fetch_assoc()) {
-            echo '<div class="post" onclick="toggleCommentSection(this)">';
-            echo '<h3>Post by User ' . $row['MemberID'] . '</h3>';
+                $post_id = $row['PostID'];
+                $comments_result = $conn->query("SELECT Comment.*, Member.username FROM Comment JOIN Member ON Comment.memberid = Member.memberid WHERE PostID = $post_id ORDER BY Comment.CommentedAt ASC");
 
-            // Display the post text if it exists
-            if (!empty($row['PostText'])) {
-                echo '<p>' . htmlspecialchars($row['PostText']) . '</p>';
-            }
-
-            // Display the media (image or video) if it exists
-            if ($row['PostType'] === 'image' || $row['PostType'] === 'video') {
-                $media_files = json_decode($row['PostImages']);
-                if ($media_files && count($media_files) > 0) {
-                    $media_url = $media_files[0];
-                    if ($row['PostType'] === 'image') {
-                        echo '<img src="' . htmlspecialchars($media_url) . '" alt="Image Post" style="max-width: 100%;">';
-                    } else {
-                        echo '<video controls style="max-width: 100%;"><source src="' . htmlspecialchars($media_url) . '" type="video/mp4">Your browser does not support the video tag.</video>';
+                echo '<div class="comment-section">';
+                if ($comments_result->num_rows > 0) {
+                    while ($comment = $comments_result->fetch_assoc()) {
+                        echo '<div class="comment">';
+                        echo '<p><strong>' . $comment['username'] . ':</strong> ' . htmlspecialchars($comment['CommentContent']) . '</p>';
+                        echo '<p style="font-size: 0.8em; color: #888;">' . $comment['CommentedAt'] . '</p>';
+                        echo '</div>';
                     }
+                } else {
+                    echo '<p>No comments yet.</p>';
                 }
+
+                echo '<form action="interactions/add_comment.php" method="POST" onclick="preventClickPropagation(event)">';
+                echo '<input type="hidden" name="post_id" value="' . $post_id . '">';
+                echo '<textarea name="comment_content" placeholder="Write a comment..." required onclick="preventClickPropagation(event)"></textarea>';
+                echo '<button type="submit" onclick="preventClickPropagation(event)">Post Comment</button>';
+                echo '</form>';
+                echo '</div>'; // End of comment section
+                echo '</div>'; // End of post
             }
-
-            // Fetch and display existing comments for this post
-            $post_id = $row['PostID'];
-            $comments_result = $conn->query("SELECT * FROM Comment WHERE PostID = $post_id ORDER BY CommentedAt ASC");
-
-            echo '<div class="comment-section">';
-            if ($comments_result->num_rows > 0) {
-                while ($comment = $comments_result->fetch_assoc()) {
-                    echo '<div class="comment">';
-                    echo '<p><strong>User ' . $comment['MemberID'] . ':</strong> ' . htmlspecialchars($comment['CommentContent']) . '</p>';
-                    echo '<p style="font-size: 0.8em; color: #888;">' . $comment['CommentedAt'] . '</p>';
-                    echo '</div>';
-                }
-            } else {
-                echo '<p>No comments yet.</p>';
-            }
-
-            // Comment submission form
-            echo '<form action="add_comment.php" method="POST">';
-            echo '<input type="hidden" name="post_id" value="' . $post_id . '">';
-            echo '<textarea name="comment_content" placeholder="Write a comment..." required></textarea>';
-            echo '<button type="submit">Post Comment</button>';
-            echo '</form>';
-            echo '</div>'; // End of comment section
-            echo '</div>'; // End of post
+        } else {
+            echo "<p>No posts available.</p>";
         }
-    } else {
-        echo "<p>No posts available.</p>";
-    }
 
-    $conn->close();
-    ?>
-</div>
-
+        $conn->close();
+        ?>
+    </div>
 
     <script>
         function toggleCommentSection(postElement) {
-            const allCommentSections = document.querySelectorAll('.comment-section');
-            allCommentSections.forEach(section => {
-                section.style.display = 'none';
-            });
-
             const commentSection = postElement.querySelector('.comment-section');
-            commentSection.style.display = commentSection.style.display === 'none' || !commentSection.style.display ? 'block' : 'none';
+            if (commentSection) {
+                commentSection.style.display =
+                    commentSection.style.display === 'none' || !commentSection.style.display
+                        ? 'block'
+                        : 'none';
+            }
+        }
+
+        function preventClickPropagation(event) {
+            event.stopPropagation();
         }
 
         function toggleFileInput(postType) {
-        const fileInput = document.getElementById('file_input');
-        fileInput.style.display = (postType === 'text') ? 'none' : 'block';
-    }
-    setTimeout(function() {
+            const fileInput = document.getElementById('file_input');
+            fileInput.style.display = (postType === 'text') ? 'none' : 'block';
+        }
+
+        setTimeout(function () {
             const banner = document.querySelector('.success-banner');
             if (banner) banner.style.display = 'none';
         }, 1000);
-
     </script>
 </body>
 

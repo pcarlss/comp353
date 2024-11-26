@@ -1,10 +1,38 @@
 <?php
-// Database connection
-$conn = new mysqli('localhost', 'root', '', 'project');
+require '../session/db_connect.php';
 
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+// Start session
+session_start();
+
+// Check if the user is logged in and has a username in the session
+if (!isset($_SESSION['username'])) {
+    // Send a redirect after 2 seconds
+    echo "You must be logged in to create a post.<br><br>";
+    echo "Redirecting to Sign Up...";
+    header("Refresh: 2; url=../account_setup.php");
+    exit;
 }
+
+// Retrieve the username from the session
+$username = $_SESSION['username'];
+
+// Query the database to get the MemberID associated with the username
+$sql_member = "SELECT MemberID FROM Member WHERE Username = ?";
+$stmt = $conn->prepare($sql_member);
+$stmt->bind_param("s", $username);
+$stmt->execute();
+$result = $stmt->get_result();
+
+if ($result->num_rows === 0) {
+    die("User not found in the database.");
+}
+
+// Fetch the MemberID
+$member_row = $result->fetch_assoc();
+$member_id = $member_row['MemberID'];
+
+// Close the statement
+$stmt->close();
 
 // Retrieve the post content and type from the form
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -35,16 +63,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Insert post into the database, setting PostImages to the media path or empty array
     $sql = "INSERT INTO Post (MemberID, PostText, PostImages, Visibility, PostType, PostedAt)
-            VALUES (1, '$post_content', '" . ($media_path ? json_encode([$media_path]) : '[]') . "', '{}', '$post_type', '$posted_at')";
+            VALUES (?, ?, ?, '{}', ?, ?)";
+    $stmt = $conn->prepare($sql);
+    $media_json = $media_path ? json_encode([$media_path]) : '[]';
+    $stmt->bind_param("issss", $member_id, $post_content, $media_json, $post_type, $posted_at);
 
-    if ($conn->query($sql) === TRUE) {
+    if ($stmt->execute()) {
         // Redirect to homepage after successful post
-        header("Location: index.php?message=Post%20added");
+        header("Location: ../index.php?message=Post%20added");
         exit;
     } else {
-        echo "Error: " . $sql . "<br>" . $conn->error;
+        echo "Error: " . $stmt->error;
     }
+
+    // Close the statement
+    $stmt->close();
 }
 
+// Close the connection
 $conn->close();
 ?>

@@ -1,22 +1,8 @@
 <?php
-// Enable error reporting for debugging
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+require 'db_connect.php';
 
-// Database connection settings
-$host = 'localhost';
-$dbname = 'project';
-$username = 'root';
-$password = '';  // Use an empty string if no password is set
-
-// Create a new MySQLi instance
-$conn = new mysqli($host, $username, $password, $dbname);
-
-// Check the connection
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
+// Start session
+session_start();
 
 // Initialize error messages
 $errors = [];
@@ -83,8 +69,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         // Execute the statement and check if successful
         if ($stmt->execute()) {
-            // Redirect to main.php after successful registration
-            header("Location: main.php");
+            // Set the session variable for the username
+            $_SESSION['username'] = $username;
+
+            // Redirect to profile.php after successful registration
+            header("Location: ../profile.php");
             exit();
         } else {
             $errors[] = "Error: " . $stmt->error;
@@ -94,6 +83,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $stmt->close();
     }
 }
+
+// Close the database connection
+$conn->close();
+?>
 
 // Close the database connection
 $conn->close();
@@ -161,56 +154,3 @@ $conn->close();
         });
     </script>
 </head>
-<body>
-    <h2>Register</h2>
-
-    <?php if (!empty($errors)): ?>
-        <div class="error-message">
-            <ul>
-                <?php foreach ($errors as $error): ?>
-                    <li><?php echo htmlspecialchars($error); ?></li>
-                <?php endforeach; ?>
-            </ul>
-        </div>
-    <?php endif; ?>
-
-    <form method="POST" action="register.php" novalidate>
-        <label>Username<span class="required">*</span></label>
-        <input type="text" name="username" required><br><br>
-
-        <label>Password<span class="required">*</span></label>
-        <input type="password" id="password" name="password" required><br><br>
-
-        <label>Confirm Password<span class="required">*</span></label>
-        <input type="password" id="confirmPassword" name="confirmPassword" required>
-        <span id="passwordError" class="error-message"></span><br><br>
-
-        <label>First Name<span class="required">*</span></label>
-        <input type="text" name="firstName" required><br><br>
-
-        <label>Last Name<span class="required">*</span></label>
-        <input type="text" name="lastName" required><br><br>
-
-        <label>Email<span class="required">*</span></label>
-        <input type="email" id="email" name="email" required>
-        <span id="emailError" class="error-message"></span><br><br>
-
-        <label>Date of Birth</label>
-        <input type="date" name="dateOfBirth"><br><br>
-
-        <label>City</label>
-        <input type="text" name="city"><br><br>
-
-        <label>Country</label>
-        <input type="text" name="country"><br><br>
-
-        <label>Profession</label>
-        <input type="text" name="profession"><br><br>
-
-        <label>Business Account</label>
-        <input type="checkbox" name="businessAccount"><br><br>
-
-        <button type="submit">Register</button>
-    </form>
-</body>
-</html>

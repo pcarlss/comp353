@@ -1,3 +1,58 @@
+<?php
+// Start the session
+session_start();
+
+// Database connection
+$conn = new mysqli('localhost', 'root', '', 'project');
+
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+// Check if the session variable for the username is set
+if (!empty($_SESSION['username'])) {
+    // Use the session variable for the username
+    $username = $_SESSION['username'];
+
+    // Query to fetch user details from the database
+    $query = "SELECT FirstName, LastName, Email, DateOfBirth, City, Country, Profession, BusinessAccount 
+              FROM Member 
+              WHERE Username = ?";
+    
+    if ($stmt = $conn->prepare($query)) {
+        $stmt->bind_param("s", $username);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if ($result->num_rows > 0) {
+            // Fetching the user data
+            $user = $result->fetch_assoc();
+            
+            // Storing user data into variables
+            $firstName = $user['FirstName'];
+            $lastName = $user['LastName'];
+            $email = $user['Email'];
+            $dob = $user['DateOfBirth'];
+            $city = $user['City'];
+            $country = $user['Country'];
+            $profession = $user['Profession'];
+            $businessAccount = $user['BusinessAccount'] ? 'Business' : 'Personal';
+        } else {
+            echo "User not found.";
+        }
+        $stmt->close();
+    } else {
+        echo "Error preparing query: " . $conn->error;
+    }
+} else {
+    echo "No username found in session. Please log in.";
+}
+
+// Close the database connection
+$conn->close();
+?>
+
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -159,9 +214,12 @@
     <!-- Top Bar -->
     <div class="top-bar">
         <h1>Account</h1>
-        <a href="index.html"><button>
+        <a href="index.php" style="margin-left: 70%"><button>
                 <h3>Homepage</h3>
             </button></a>
+        <a href="session/signout.php"><button>
+            <h3>Sign Out</h3>
+        </button></a>
     </div>
 
     <!-- Profile Content -->
@@ -170,11 +228,11 @@
 
         <!-- Profile Picture Section -->
         <div class="profile-picture">
-            <img id="profile-picture" src="/default_pfp.png" alt="Profile Picture">
+            <img id="profile-picture" src="uploads\images\default_pfp.png" alt="Profile Picture">
         </div>
 
         <!-- Profile Section -->
-        <div class="profile-info">
+        <!-- <div class="profile-info">
             <div class="profile-item">
                 <p>Name:</p>
                 <span id="profile-name">Your Name</span>
@@ -201,7 +259,41 @@
                     <h3>Edit</h3>
                 </button>
             </div>
-        </div>
+        </div> -->
+
+        <div class="profile-info">
+        <div class="profile-info">
+    <div class="profile-item">
+        <p>Name:</p>
+        <span id="profile-name"><?php echo htmlspecialchars($firstName . ' ' . $lastName); ?></span>
+    </div>
+    <div class="profile-item">
+        <p>Email:</p>
+        <span id="profile-email"><?php echo htmlspecialchars($email); ?></span>
+    </div>
+    <div class="profile-item">
+        <p>Date of Birth:</p>
+        <span id="profile-dob"><?php echo htmlspecialchars($dob); ?></span>
+    </div>
+    <div class="profile-item">
+        <p>City:</p>
+        <span id="profile-city"><?php echo htmlspecialchars($city); ?></span>
+    </div>
+    <div class="profile-item">
+        <p>Country:</p>
+        <span id="profile-country"><?php echo htmlspecialchars($country); ?></span>
+    </div>
+    <div class="profile-item">
+        <p>Profession:</p>
+        <span id="profile-profession"><?php echo htmlspecialchars($profession); ?></span>
+    </div>
+    <div class="profile-item">
+        <p>Account Type:</p>
+        <span id="profile-account"><?php echo htmlspecialchars($businessAccount); ?></span>
+    </div>
+</div>
+
+
     </div>
 
     <script>

@@ -9,7 +9,7 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
 
 // Get the logged-in user's ID and username
 $loggedInUsername = $_SESSION['username'];
-$loggedInUserID = $_SESSION['memberID']; // Assume this is stored in the session
+$loggedInUserID = $_SESSION['memberID'];
 
 // Database connection settings
 $host = 'localhost';
@@ -27,10 +27,6 @@ if ($conn->connect_error) {
 
 // Retrieve usernames excluding the logged-in user and users who are blocked or have blocked the user
 $users = [];
-
-
-
-
 $stmt = $conn->prepare("
     SELECT MemberID, Username, 
     CASE WHEN EXISTS (
@@ -41,32 +37,27 @@ $stmt = $conn->prepare("
     CASE WHEN EXISTS (
         SELECT 1 FROM Blocked 
         WHERE (MemberID1 = ? AND MemberID2 = Member.MemberID)
-    ) THEN 1 ELSE 0 END AS IsBlocked
+    ) THEN 1 ELSE 0 END AS IsBlocked,
+    CASE WHEN EXISTS (
+        SELECT 1 FROM FriendOrGroupRequest 
+        WHERE (RequestorID = ? AND RequesteeID = Member.MemberID)
+    ) THEN 1 ELSE 0 END AS IsRequestSent
     FROM Member 
     WHERE MemberID != ?  -- Exclude the logged-in user
     AND NOT EXISTS (
         SELECT 1 FROM Blocked 
         WHERE MemberID2 = ? AND MemberID1 = Member.MemberID
-    )");
-$stmt->bind_param("iiiii", $loggedInUserID, $loggedInUserID, $loggedInUserID, $loggedInUserID, $loggedInUserID);
+    )
+");
+$stmt->bind_param("iiiiii", $loggedInUserID, $loggedInUserID, $loggedInUserID, $loggedInUserID, $loggedInUserID, $loggedInUserID);
 $stmt->execute();
-
-
 $result = $stmt->get_result();
 while ($row = $result->fetch_assoc()) {
     $users[] = $row;
 }
-
 $stmt->close();
 
-
-
-
-
-
-
-
-// Handle friend request or block submission via AJAX
+// Handle friend request, cancel friend request, or block submission via AJAX
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
     $response = [];
@@ -112,6 +103,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $response['message'] = "Failed to send friend request.";
             }
             $stmt->close();
+        } elseif ($action === "cancelFriendRequest") {
+            // Cancel a friend request
+            $stmt = $conn->prepare("DELETE FROM FriendOrGroupRequest WHERE RequestorID = ? AND RequesteeID = ?");
+            $stmt->bind_param("ii", $loggedInUserID, $requesteeID);
+            if ($stmt->execute()) {
+                $response['message'] = "Friend request canceled.";
+            } else {
+                $response['message'] = "Failed to cancel friend request.";
+            }
+            $stmt->close();
         }
 
         echo json_encode($response);
@@ -140,30 +141,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             justify-content: flex-start;
             min-height: 100vh;
         }
-        .header {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-        }
-        .header h2 {
-            margin: 0;
-            font-size: 1.2em;
-            color: #333;
-        }
-        .back-button {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-        }
-        .back-button button {
-            padding: 8px 16px;
-            font-size: 1em;
-            cursor: pointer;
-            border: none;
-            background-color: #007BFF;
-            color: #fff;
-            border-radius: 4px;
-        }
         h1 {
             font-size: 24px;
             color: #333;
@@ -189,7 +166,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-radius: 0 0 4px 4px;
             overflow: hidden;
             top: 100%;
-            text-align: left;
         }
         .dropdown-content div {
             padding: 12px 16px;
@@ -233,22 +209,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </style>
 </head>
 <body>
-    <div class="header">
-        <h2><?php echo htmlspecialchars($loggedInUsername); ?></h2>
-    </div>
-
-    <div class="back-button">
-        <form action="main.php" method="get">
-            <button type="submit">Back to Main</button>
-        </form>
-    </div>
-
     <h1>Search for Users</h1>
     <div class="dropdown" style="position: relative;">
         <input type="text" id="searchInput" placeholder="Enter username" autocomplete="off" onfocus="openDropdown()" oninput="filterFunction()">
         <div id="dropdownList" class="dropdown-content">
             <?php foreach ($users as $user): ?>
-                <div onclick="selectUser('<?php echo $user['Username']; ?>', '<?php echo $user['MemberID']; ?>', <?php echo $user['IsFriend']; ?>, <?php echo $user['IsBlocked']; ?>)">
+                <div onclick="selectUser('<?php echo $user['Username']; ?>', '<?php echo $user['MemberID']; ?>', <?php echo $user['IsFriend']; ?>, <?php echo $user['IsBlocked']; ?>, <?php echo $user['IsRequestSent']; ?>)">
                     <?php echo htmlspecialchars($user['Username']); ?>
                 </div>
             <?php endforeach; ?>
@@ -264,6 +230,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         let selectedUserID;
         let isAlreadyFriend = false;
         let isBlocked = false;
+        let isRequestSent = false;
 
         function openDropdown() {
             document.getElementById("dropdownList").style.display = "block";
@@ -280,90 +247,125 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+        function selectUser(username, userID, isFriend, isBlockedStatus, isRequestSentStatus) {
+            document.getElementById("selectedUsername").textContent = username;
+            document.getElementById("selectedUserContainer").style.display = "block";
+            selectedUserID = userID;
+            isAlreadyFriend = isFriend === 1;
+            isBlocked = isBlockedStatus === 1;
+            isRequestSent = isRequestSentStatus === 1;
 
-        function selectUser(username, userID, isFriend, isBlockedStatus) {
-    document.getElementById("selectedUsername").textContent = username;
-    document.getElementById("selectedUserContainer").style.display = "block";
-    selectedUserID = userID;
-    isAlreadyFriend = isFriend === 1;
-    isBlocked = isBlockedStatus === 1;
+            const friendButton = document.getElementById("sendRequestButton");
+            const blockButton = document.getElementById("blockButton");
 
-    const friendButton = document.getElementById("sendRequestButton");
-    const blockButton = document.getElementById("blockButton");
+            if (isBlocked) {
+                friendButton.disabled = true;
+                friendButton.textContent = "User Blocked";
 
-    if (isBlocked) {
-        friendButton.disabled = true;
-        friendButton.textContent = "User Blocked";
+                blockButton.textContent = "Unblock User";
+                blockButton.onclick = unblockUser;
+            } else if (isAlreadyFriend) {
+                friendButton.disabled = true;
+                friendButton.textContent = "Friends";
 
-        blockButton.textContent = "Unblock User"; // Show "Unblock" button
-        blockButton.disabled = false;
-        blockButton.onclick = unblockUser; // Set unblock action
-    } else if (isAlreadyFriend) {
-        friendButton.disabled = true;
-        friendButton.textContent = "Friends";
-
-        blockButton.textContent = "Block User";
-        blockButton.disabled = false;
-        blockButton.onclick = blockUser;
-    } else {
-        friendButton.disabled = false;
-        friendButton.textContent = "Send Friend Request";
-
-        blockButton.textContent = "Block User";
-        blockButton.disabled = false;
-        blockButton.onclick = blockUser;
-    }
-}
-
-function unblockUser() {
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", "friend.php", true);
-    xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-    xhr.onreadystatechange = function () {
-        if (xhr.readyState === 4 && xhr.status === 200) {
-            const response = JSON.parse(xhr.responseText);
-            alert(response.message);
-            isBlocked = false;
-            selectUser(document.getElementById("selectedUsername").textContent, selectedUserID, isAlreadyFriend, 0);
-        }
-    };
-    xhr.send("requesteeID=" + selectedUserID + "&action=unblock");
-}
-
-    
-
-
-
-
-        
-        function sendFriendRequest() {
-            if (!isAlreadyFriend && !isBlocked) {
-                const xhr = new XMLHttpRequest();
-                xhr.open("POST", "friend.php", true);
-                xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-                xhr.onreadystatechange = function() {
-                    if (xhr.readyState === 4 && xhr.status === 200) {
-                        const response = JSON.parse(xhr.responseText);
-                        alert(response.message);
-                    }
-                };
-                xhr.send("requesteeID=" + selectedUserID + "&action=friendRequest");
+                blockButton.textContent = "Block User";
+                blockButton.onclick = blockUser;
+            } else if (isRequestSent) {
+                friendButton.disabled = false;
+                friendButton.textContent = "Cancel Friend Request";
+                friendButton.onclick = cancelFriendRequest;
+            } else {
+                friendButton.disabled = false;
+                friendButton.textContent = "Send Friend Request";
+                friendButton.onclick = sendFriendRequest;
             }
+        }
+
+        function sendFriendRequest() {
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "friend.php", true);
+            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    const response = JSON.parse(xhr.responseText);
+                    alert(response.message);
+
+                    if (response.message === "Friend request sent successfully.") {
+                        isRequestSent = true;
+                        selectUser(document.getElementById("selectedUsername").textContent, selectedUserID, isAlreadyFriend, isBlocked, 1);
+                    }
+                }
+            };
+            xhr.send("requesteeID=" + selectedUserID + "&action=friendRequest");
+        }
+
+        function cancelFriendRequest() {
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "friend.php", true);
+            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    const response = JSON.parse(xhr.responseText);
+                    alert(response.message);
+
+                    if (response.message === "Friend request canceled.") {
+                        isRequestSent = false;
+                        selectUser(document.getElementById("selectedUsername").textContent, selectedUserID, isAlreadyFriend, isBlocked, 0);
+                    }
+                }
+            };
+            xhr.send("requesteeID=" + selectedUserID + "&action=cancelFriendRequest");
         }
 
         function blockUser() {
-            if (!isBlocked) {
-                const xhr = new XMLHttpRequest();
-                xhr.open("POST", "friend.php", true);
-                xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-                xhr.onreadystatechange = function() {
-                    if (xhr.readyState === 4 && xhr.status === 200) {
-                        const response = JSON.parse(xhr.responseText);
-                        alert(response.message);
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "friend.php", true);
+            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    const response = JSON.parse(xhr.responseText);
+                    alert(response.message);
+                    isBlocked = true;
+                    selectUser(document.getElementById("selectedUsername").textContent, selectedUserID, isAlreadyFriend, 1, isRequestSent);
+                }
+            };
+            xhr.send("requesteeID=" + selectedUserID + "&action=block");
+        }
+
+        function unblockUser() {
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "friend.php", true);
+            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    const response = JSON.parse(xhr.responseText);
+                    alert(response.message);
+
+                    if (response.message === "User unblocked successfully.") {
+                        isBlocked = false;
+
+                        const friendButton = document.getElementById("sendRequestButton");
+                        const blockButton = document.getElementById("blockButton");
+
+                        if (isAlreadyFriend) {
+                            friendButton.disabled = true;
+                            friendButton.textContent = "Friends";
+                        } else if (isRequestSent) {
+                            friendButton.disabled = false;
+                            friendButton.textContent = "Cancel Friend Request";
+                            friendButton.onclick = cancelFriendRequest;
+                        } else {
+                            friendButton.disabled = false;
+                            friendButton.textContent = "Send Friend Request";
+                            friendButton.onclick = sendFriendRequest;
+                        }
+
+                        blockButton.textContent = "Block User";
+                        blockButton.onclick = blockUser;
                     }
-                };
-                xhr.send("requesteeID=" + selectedUserID + "&action=block");
-            }
+                }
+            };
+            xhr.send("requesteeID=" + selectedUserID + "&action=unblock");
         }
 
         window.onclick = function(event) {

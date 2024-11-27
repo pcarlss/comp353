@@ -170,6 +170,22 @@ CREATE TABLE `GroupMember` (
 
 -- --------------------------------------------------------
 
+
+--
+-- Table structure for table `JoinRequest` to request to join a group
+--
+
+CREATE TABLE JoinRequests (
+    RequestID INT AUTO_INCREMENT PRIMARY KEY,
+    GroupID INT NOT NULL,
+    MemberID INT NOT NULL,
+    RequestDate DATE NOT NULL,
+    FOREIGN KEY (GroupID) REFERENCES GroupList(GroupID) ON DELETE CASCADE,
+    FOREIGN KEY (MemberID) REFERENCES Member(MemberID) ON DELETE CASCADE
+);
+
+-- --------------------------------------------------------
+
 --
 -- Table structure for table `Member`
 --

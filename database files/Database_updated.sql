@@ -175,7 +175,7 @@ CREATE TABLE `GroupMember` (
 -- Table structure for table `JoinRequest` to request to join a group
 --
 
-CREATE TABLE JoinRequests (
+CREATE TABLE `JoinRequests` (
     RequestID INT AUTO_INCREMENT PRIMARY KEY,
     GroupID INT NOT NULL,
     MemberID INT NOT NULL,
@@ -236,12 +236,14 @@ CREATE TABLE `Message` (
 --
 
 CREATE TABLE `Post` (
-  `PostID` int(50) NOT NULL,
-  `MemberID` int(50) NOT NULL,
-  `PostText` text NOT NULL,
-  `PostImages` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`PostImages`)),
-  `PostedAt` date NOT NULL,
-  `Visibility` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`Visibility`))
+  `PostID` int(50) NOT NULL AUTO_INCREMENT,  -- Auto-incrementing primary key
+  `MemberID` int(50) NOT NULL,               -- Member who created the post
+  `PostText` text NOT NULL,                  -- Content of the post
+  `PostImages` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`PostImages`)),  -- Post images in JSON format
+  `PostedAt` date NOT NULL,                  -- Date when the post was made
+  `Visibility` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`Visibility`)), -- Visibility settings in JSON format
+  `PostType` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,  -- Type of the post (e.g., text, image, etc.)
+  PRIMARY KEY (`PostID`)                     -- Primary key for the table
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------

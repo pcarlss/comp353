@@ -1,29 +1,35 @@
 <?php
-session_start(); // Start or resume the session
+require '../session/db_connect.php';
+session_start();
 
 // Ensure the user is logged in
-if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
+if (!isset($_SESSION['username'])) {
     header("Location: login.php");
     exit;
 }
 
+// Get the logged-in username from the session
+$username = $_SESSION['username'];
+
+// Fetch the member ID
+$stmt = $conn->prepare("SELECT memberid FROM Member WHERE username = ?");
+$stmt->bind_param("s", $username);
+$stmt->execute();
+$result = $stmt->get_result();
+
+if ($result->num_rows > 0) {
+    $row = $result->fetch_assoc(); // Fetch the row as an associative array
+    $memberid = $row['memberid'];  // Extract the member ID
+    $_SESSION['memberid'] = $memberid;
+} else {
+    die("Error: User not found.");
+}
+
+$stmt->close();
+
 // Get the logged-in user's ID and username
 $loggedInUsername = $_SESSION['username'];
-$loggedInUserID = $_SESSION['memberID'];
-
-// Database connection settings
-$host = 'localhost';
-$dbname = 'project';
-$username = 'root';
-$password = '';  // Use an empty string if no password is set
-
-// Create a new MySQLi instance
-$conn = new mysqli($host, $username, $password, $dbname);
-
-// Check connection
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
+$loggedInUserID = $_SESSION['memberid'];
 
 // Retrieve usernames excluding the logged-in user and users who are blocked or have blocked the user
 $users = [];
@@ -130,22 +136,154 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Search for Users</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Roboto', sans-serif;
-            background-color: #f4f4f4;
+        /* Basic reset */
+        * {
             margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            min-height: 100vh;
+            padding: 0;
+            box-sizing: border-box;
         }
-        h1 {
-            font-size: 24px;
-            color: #333;
-            text-align: center;
+
+        /* Layout styling */
+        body {
+            display: flex;
+            justify-content: center;
+            background-color: #f0f2f5;
+            font-family: Arial, sans-serif;
+            padding-top: 120px;
+            overflow-y: scroll;
+        }
+
+        /* Top Bar Styling */
+        .top-bar {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background-color: #4c87ae;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .top-bar h1 {
+            font-size: 1.5em;
+        }
+
+        .top-bar button {
+            background-color: #fff;
+            color: #4c87ae;
+            border: none;
+            padding: 10px 15px;
+            font-size: 1em;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .top-bar button:hover {
+            background-color: #ddd;
+        }
+
+        /* Centering the main content */
+        .container {
+            width: 100%;
+            max-width: 600px;
+            padding: 10px;
+        }
+
+        .post {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
             margin-bottom: 20px;
+            cursor: pointer;
+        }
+
+        .post h3 {
+            font-size: 1.2em;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .post p {
+            color: #555;
+            font-size: 1em;
+            line-height: 1.5;
+        }
+
+        .comment-section {
+            display: none;
+            margin-top: 15px;
+        }
+
+        .comment-section textarea {
+            width: 100%;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 1em;
+            resize: none;
+        }
+
+        .comment-section button {
+            background-color: #4c87ae;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .post-form {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .post-form h3 {
+            font-size: 1.2em;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .post-form textarea {
+            width: 100%;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 1em;
+            resize: none;
+            margin-bottom: 10px;
+        }
+
+        .post-form button {
+            background-color: #4c87ae;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .success-banner {
+            background-color: #28a745;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1001;
         }
         input[type="text"] {
             width: 100%;
@@ -157,7 +295,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         .dropdown-content {
             display: none;
-            position: absolute;
             background-color: #f9f9f9;
             width: 100%;
             max-width: 300px;
@@ -209,21 +346,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </style>
 </head>
 <body>
-    <h1>Search for Users</h1>
-    <div class="dropdown" style="position: relative;">
-        <input type="text" id="searchInput" placeholder="Enter username" autocomplete="off" onfocus="openDropdown()" oninput="filterFunction()">
-        <div id="dropdownList" class="dropdown-content">
-            <?php foreach ($users as $user): ?>
-                <div onclick="selectUser('<?php echo $user['Username']; ?>', '<?php echo $user['MemberID']; ?>', <?php echo $user['IsFriend']; ?>, <?php echo $user['IsBlocked']; ?>, <?php echo $user['IsRequestSent']; ?>)">
-                    <?php echo htmlspecialchars($user['Username']); ?>
-                </div>
-            <?php endforeach; ?>
-        </div>
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <h1>Add Friends</h1>
+        <a href="friendlist.php"><button>
+            <h3>Friends List</h3>
+        </button></a>
+        <a href="../index.php"><button>
+            <h3>Homepage</h3>
+        </button></a>
     </div>
-    <div id="selectedUserContainer" class="selected-user-box" style="display: none;">
-        <p id="selectedUsername" class="username-text"></p>
-        <button id="sendRequestButton" onclick="sendFriendRequest()">Send Friend Request</button>
-        <button id="blockButton" class="block" onclick="blockUser()">Block User</button>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Title for Dropdown -->
+        <h1 style="text-align: center; margin-bottom: 20px;">Search for User</h1>
+
+        <!-- Centered Dropdown -->
+        <div style="display: flex; justify-content: center; align-items: center;">
+            <div class="dropdown" style="position: relative; width: 100%; max-width: 300px;">
+                <input type="text" id="searchInput" placeholder="Search User" autocomplete="off" onfocus="openDropdown()" oninput="filterFunction()" style="width: 100%;">
+                <div id="dropdownList" class="dropdown-content">
+                    <?php foreach ($users as $user): ?>
+                        <div onclick="selectUser('<?php echo $user['Username']; ?>', '<?php echo $user['MemberID']; ?>', <?php echo $user['IsFriend']; ?>, <?php echo $user['IsBlocked']; ?>, <?php echo $user['IsRequestSent']; ?>)">
+                            <?php echo htmlspecialchars($user['Username']); ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+
+        <!-- Selected User Info -->
+        <div id="selectedUserContainer" class="selected-user-box" style="display: none; padding-top: 20px; margin: auto">
+            <p id="selectedUsername" class="username-text"></p>
+            <button id="sendRequestButton" onclick="sendFriendRequest()">Send Friend Request</button>
+            <button id="blockButton" class="block" onclick="blockUser()">Block User</button>
+        </div>
     </div>
 
     <script>

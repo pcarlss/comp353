@@ -1,24 +1,26 @@
 <?php
-session_start(); // Start or resume the session
+require '../session/db_connect.php';
+session_start();
 
 // Ensure the user is logged in
-if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
+if (!isset($_SESSION['username'])) {
     header("Location: login.php");
     exit;
 }
+$username = $_SESSION['username'];
 
-// Database connection settings
-$host = 'localhost';
-$dbname = 'project';
-$dbUsername = 'root';
-$dbPassword = '';  // Assuming no password is set
+// Fetch the member ID
+$stmt = $conn->prepare("SELECT memberid FROM Member WHERE username = ?");
+$stmt->bind_param("s", $username);
+$stmt->execute();
+$result = $stmt->get_result();
 
-// Create a MySQLi instance
-$conn = new mysqli($host, $dbUsername, $dbPassword, $dbname);
-
-// Check the connection
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+if ($result->num_rows > 0) {
+    $row = $result->fetch_assoc(); // Fetch the row as an associative array
+    $memberid = $row['memberid'];  // Extract the member ID
+    $_SESSION['memberid'] = $memberid;
+} else {
+    die("Error: User not found.");
 }
 
 // Retrieve user information from session and URL parameters

@@ -1,13 +1,6 @@
 <?php
-// Start the session
+require 'session/db_connect.php';
 session_start();
-
-// Database connection
-$conn = new mysqli('localhost', 'root', '', 'project');
-
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
 
 // Check if the session variable for the username is set
 if (!empty($_SESSION['username'])) {
@@ -214,9 +207,13 @@ $conn->close();
     <!-- Top Bar -->
     <div class="top-bar">
         <h1>Account</h1>
-        <a href="index.php" style="margin-left: 70%"><button>
+        <a href="index.php" ><button>
                 <h3>Homepage</h3>
             </button></a>
+        </a>
+        <a href="member and friends/friendlist.php"><button>
+            <h3>Friend List</h3>
+        </button></a>
         <a href="session/signout.php"><button>
             <h3>Sign Out</h3>
         </button></a>
@@ -231,61 +228,47 @@ $conn->close();
             <img id="profile-picture" src="uploads\images\default_pfp.png" alt="Profile Picture">
         </div>
 
-        <!-- Profile Section -->
-        <!-- <div class="profile-info">
-            <div class="profile-item">
-                <p>Name:</p>
-                <span id="profile-name">Your Name</span>
-                <input type="text" id="edit-name" style="display: none;" value="Your Name">
-                <button id="name-button" onclick="toggleEdit('name')">
-                    <h3>Edit</h3>
-                </button>
-            </div>
-
-            <div class="profile-item">
-                <p>Email:</p>
-                <span id="profile-email">your.email@example.com</span>
-                <input type="email" id="edit-email" style="display: none;" value="your.email@example.com">
-                <button id="email-button" onclick="toggleEdit('email')">
-                    <h3>Edit</h3>
-                </button>
-            </div>
-
-            <div class="profile-item">
-                <p>Profile Picture:</p>
-                <span></span>
-                <input type="file" id="edit-picture" style="display: none;" accept="image/*">
-                <button id="picture-button" onclick="toggleEditPicture()">
-                    <h3>Edit</h3>
-                </button>
-            </div>
-        </div> -->
-
-        <div class="profile-info">
-        <div class="profile-info">
     <div class="profile-item">
         <p>Name:</p>
         <span id="profile-name"><?php echo htmlspecialchars($firstName . ' ' . $lastName); ?></span>
+        <button id="name-button" onclick="toggleEdit('name')">
+            <h3>Edit</h3>
+        </button>
     </div>
     <div class="profile-item">
         <p>Email:</p>
         <span id="profile-email"><?php echo htmlspecialchars($email); ?></span>
+        <button id="email-button" onclick="toggleEdit('email')">
+                    <h3>Edit</h3>
+        </button>
     </div>
     <div class="profile-item">
         <p>Date of Birth:</p>
         <span id="profile-dob"><?php echo htmlspecialchars($dob); ?></span>
+        <button id="email-button" onclick="toggleEdit('dob')">
+                    <h3>Edit</h3>
+        </button>
     </div>
     <div class="profile-item">
         <p>City:</p>
         <span id="profile-city"><?php echo htmlspecialchars($city); ?></span>
+        <button id="email-button" onclick="toggleEdit('city')">
+                    <h3>Edit</h3>
+        </button>
     </div>
     <div class="profile-item">
         <p>Country:</p>
         <span id="profile-country"><?php echo htmlspecialchars($country); ?></span>
+        <button id="email-button" onclick="toggleEdit('country')">
+                    <h3>Edit</h3>
+        </button>
     </div>
     <div class="profile-item">
         <p>Profession:</p>
         <span id="profile-profession"><?php echo htmlspecialchars($profession); ?></span>
+        <button id="email-button" onclick="toggleEdit('profession')">
+                    <h3>Edit</h3>
+        </button>
     </div>
     <div class="profile-item">
         <p>Account Type:</p>
@@ -297,22 +280,48 @@ $conn->close();
     </div>
 
     <script>
-        function toggleEdit(field) {
-            const profileField = document.getElementById('profile-' + field);
-            const editField = document.getElementById('edit-' + field);
-            const button = document.getElementById(field + '-button');
+    function toggleEdit(field) {
+        const profileField = document.getElementById('profile-' + field);
+        const editField = document.getElementById('edit-' + field);
+        const button = document.getElementById(field + '-button');
 
+        if (editField) {
             if (editField.style.display === "none") {
                 editField.style.display = "block";
                 profileField.style.display = "none";
                 button.innerHTML = "<h3>Save</h3>";
             } else {
-                profileField.style.display = "block";
-                profileField.textContent = editField.value;
-                editField.style.display = "none";
-                button.innerHTML = "<h3>Edit</h3>";
-            }
+                const newValue = editField.value;
+                // Update field in database via AJAX
+                updateField(field, newValue)
+                    .then(() => {
+                        profileField.textContent = newValue;
+                        profileField.style.display = "block";
+                        editField.style.display = "none";
+                        button.innerHTML = "<h3>Edit</h3>";
+                    })
+                    .catch((error) => {
+                        alert("Error updating field: " + error);
+                });
+             }
         }
+    }
+
+function updateField(field, value) {
+    return fetch("update_profile.php", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ field: field, value: value }),
+    }).then((response) => {
+        if (!response.ok) {
+            throw new Error("Failed to update field");
+        }
+        return response.json();
+    });
+}
+
 
         function toggleEditPicture() {
             const editPicture = document.getElementById('edit-picture');

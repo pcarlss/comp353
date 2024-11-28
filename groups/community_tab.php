@@ -301,9 +301,22 @@ function leaveGroup(groupId, buttonElement) {
 </head>
 
 <body>
-    <header>
-        <h1>Community Page</h1>
-    </header>
+<header>
+    <nav style="display: flex; justify-content: space-between; align-items: center; padding: 0 1rem; background-color: #4c87ae; color: white;">
+        <!-- Left Side: Homepage Link -->
+        <a href="/comp353/index.php" style="text-decoration: none; color: white; font-size: 1.2rem; font-weight: bold;">
+            Home
+        </a>
+
+        <!-- Center Title -->
+        <div style="flex-grow: 1; text-align: center;">
+            <h1 style="margin: 0; font-size: 1.8rem;">Community Page</h1>
+        </div>
+
+        <!-- Right Side: Empty for now -->
+        <div style="width: 100px;"></div>
+    </nav>
+</header>
     <main>
         <!-- Display Groups Section -->
         <section class="groups-list">
@@ -365,10 +378,6 @@ function leaveGroup(groupId, buttonElement) {
                 <div class="form-group">
                     <label for="groupName">Group Name</label>
                     <input type="text" id="groupName" name="groupName" required>
-                </div>
-                <div class="form-group">
-                    <label for="groupDescription">Group Description</label>
-                    <textarea id="groupDescription" name="groupDescription" rows="3" required></textarea>
                 </div>
                 <input type="submit" value="Create Group">
             </form>

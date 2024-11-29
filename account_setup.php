@@ -20,10 +20,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $firstName = $_POST['firstName'];
     $lastName = $_POST['lastName'];
     $email = $_POST['email'];
-    $dateOfBirth = !empty($_POST['dateOfBirth']) ? $_POST['dateOfBirth'] : NULL;
-    $city = !empty($_POST['city']) ? $_POST['city'] : NULL;
-    $country = !empty($_POST['country']) ? $_POST['country'] : NULL;
-    $profession = !empty($_POST['profession']) ? $_POST['profession'] : NULL;
+    $dateOfBirth = !empty($_POST['dateOfBirth']) ? trim($_POST['dateOfBirth']) : null;
+    $city = !empty($_POST['city']) ? trim($_POST['city']) : null;
+    $country = !empty($_POST['country']) ? trim($_POST['country']) : null;
+    $profession = !empty($_POST['profession']) ? trim($_POST['profession']) : null;
     $businessAccount = isset($_POST['businessAccount']) ? 1 : 0;
 
     // Validate required fields and matching passwords
@@ -38,6 +38,32 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $errors[] = "Please enter a valid email address.";
     }
+
+// Validate date of birth
+if (isset($_POST['dateOfBirth'])) { // Check if the field is submitted
+    $dateOfBirth = trim($_POST['dateOfBirth']); // Trim to remove unnecessary spaces
+
+    if (!empty($dateOfBirth)) {
+        $dateParts = explode('-', $dateOfBirth);
+
+        // Validate format and check if it's a valid date
+        if (
+            count($dateParts) === 3 &&
+            is_numeric($dateParts[0]) &&
+            is_numeric($dateParts[1]) &&
+            is_numeric($dateParts[2]) &&
+            checkdate((int)$dateParts[1], (int)$dateParts[2], (int)$dateParts[0])
+        ) {
+            // Valid date
+        } else {
+            $errors[] = "Invalid date format or date does not exist. Please enter a valid date (YYYY-MM-DD).";
+        }
+    } else {
+        $dateOfBirth = null; // Allow null if the field is empty
+    }
+}
+
+
 
     // If no errors, proceed to insert data
     if (empty($errors)) {
@@ -317,8 +343,38 @@ $conn->close();
         <label>Email<span class="required">*</span></label>
         <input type="email" id="email" name="email" required>
 
-        <label>Date of Birth</label>
-        <input type="date" name="dateOfBirth">
+        
+        <label for="dateOfBirth">Date of Birth</label>
+<div class="date-container">
+    <input 
+        type="text" 
+        name="dateOfBirth" 
+        id="dateOfBirth" 
+        placeholder="YYYY-MM-DD"
+        pattern="\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])"
+        title="Enter a date in the format YYYY-MM-DD"
+    >
+    <p id="dateError" style="color: red; display: none;">Please enter a valid date in the format YYYY-MM-DD.</p>
+</div>
+
+<script>
+    document.querySelector("form").addEventListener("submit", function (e) {
+        const dateInput = document.getElementById("dateOfBirth");
+        const dateError = document.getElementById("dateError");
+        const dateRegex = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
+
+        // Hide error by default
+        dateError.style.display = "none";
+
+        // Check if the field has a value and validate it
+        if (dateInput.value && !dateRegex.test(dateInput.value)) {
+            e.preventDefault(); // Prevent form submission
+            dateError.style.display = "block"; // Show error message
+        }
+    });
+</script>
+
+
 
         <label>City</label>
         <input type="text" name="city">

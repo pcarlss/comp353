@@ -186,9 +186,13 @@ session_start();
     <h3>Create a New Gift Exchange Event</h3>
     <form action="interactions/add_giftexchange.php" method="POST" enctype="multipart/form-data">
         <label>Gift Exchange Name:</label>
-        <input type="text" name="ge_name" id="ge_name" required><br>
-        <textarea name="ge_desc" placeholder="Describe your event" required></textarea>
-        <textarea name="ge_date" placeholder="When/where will the gift exchange be?" required></textarea>
+        <input type="text" name="ge_name" id="ge_name" placeholder="Give your gift exchange a name" required><br>
+
+        <label for="ge_desc">Event Information:</label>
+        <textarea name="ge_desc" id="ge_desc" placeholder="Describe your event"></textarea>
+
+        <label for="ge_date">Event Date/Place:</label>
+        <textarea name="ge_date" id="ge_date" placeholder="When/where will the gift exchange be?"></textarea>
         <button type="submit">Create</button>
     </form>
 </div>
@@ -203,25 +207,27 @@ session_start();
 <!-- Posts and Comments -->
 <div class="container">
     <?php
+    echo 'Gift Exchanges';
     $result = $conn->query("SELECT GiftExchange.*, Member.username FROM GiftExchange, Member");
 
     if ($result->num_rows > 0) {
         while ($row = $result->fetch_assoc()) {
             echo '<div class="post" onclick="toggleCommentSection(this)">';
-            //echo '<h3>Post by ' . $row['username'] . '</h3>';
+            echo '<h3>Gift Exchange Name ' . $row['GiftExchangeName'] . '</h3>';
 
             if (!empty($row['GiftExchangeDesc'])) {
-                echo '<p>' . htmlspecialchars($row['GiftExchangeDesc']) . '</p>';
+                echo '<p>Gift Exchange Description:<br>' . htmlspecialchars($row['GiftExchangeDesc']) . '</p>';
+                echo '<p>Gift Exchange Date/Place:' . htmlspecialchars($row['GiftExchangeDesc']) . '</p>';
             }
 
             $giftexchange_id = $row['GiftExchangeID'];
-            $comments_result = $conn->query("SELECT Gift.*, Member.username FROM Gift JOIN Member ON Gift.GIftforID = Member.memberid WHERE GiftExchangeID = $giftexchange_id");
+            $gifts_result = $conn->query("SELECT Gift.*, Member.username FROM Gift JOIN Member ON Gift.GIftforID = Member.memberid WHERE GiftExchangeID = $giftexchange_id");
 
             echo '<div class="comment-section">';
-            if ($comments_result->num_rows > 0) {
-                while ($comment = $comments_result->fetch_assoc()) {
+            if ($gifts_result->num_rows > 0) {
+                while ($gift = $gifts_result->fetch_assoc()) {
                     echo '<div class="comment">';
-                    echo '<p><strong>' . $comment['username'] . ' would like a(n): </strong> ' . htmlspecialchars($comment['GIftName']) . '</p>';
+                    echo '<p><strong>' . $gift['username'] . ' would like a(n): </strong> ' . htmlspecialchars($$gift['GiftName']) . '</p>';
                     echo '</div>';
                 }
             } else {

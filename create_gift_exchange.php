@@ -208,7 +208,7 @@ session_start();
 <div class="container">
     <?php
     echo 'Gift Exchanges';
-    $result = $conn->query("SELECT GiftExchange.*, Member.username FROM GiftExchange, Member");
+    $result = $conn->query("SELECT GiftExchange.* FROM GiftExchange, GroupMember WHERE GroupMember.MemberID = '{$_SESSION['memberid']}' AND GroupMember.GroupID = GiftExchange.GroupID");
 
     if ($result->num_rows > 0) {
         while ($row = $result->fetch_assoc()) {
@@ -221,13 +221,13 @@ session_start();
             }
 
             $giftexchange_id = $row['GiftExchangeID'];
-            $gifts_result = $conn->query("SELECT Gift.*, Member.username FROM Gift JOIN Member ON Gift.GIftforID = Member.memberid WHERE GiftExchangeID = $giftexchange_id");
+            $gifts_result = $conn->query("SELECT Gift.* FROM Gift JOIN Member ON Gift.GiftforID = Member.memberid WHERE Gift.GiftExchangeEventID = $giftexchange_id");
 
             echo '<div class="comment-section">';
             if ($gifts_result->num_rows > 0) {
                 while ($gift = $gifts_result->fetch_assoc()) {
                     echo '<div class="comment">';
-                    echo '<p><strong>' . $gift['username'] . ' would like a(n): </strong> ' . htmlspecialchars($$gift['GiftName']) . '</p>';
+                    echo '<p><strong>' . $_SESSION['username'] . ' would like a(n): </strong> ' . htmlspecialchars($$gift['GiftName']) . '</p>';
                     echo '</div>';
                 }
             } else {

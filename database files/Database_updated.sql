@@ -136,6 +136,8 @@ CREATE TABLE `Gift` (
 
 CREATE TABLE `GiftExchange` (
   `GiftExchangeID` int(50) NOT NULL,
+  `GiftExchangeName` int(50) NOT NULL,
+  `GiftExchangeDesc` int(50) NOT NULL,
   `GiftGroupID` int(50) NOT NULL,
   `GiftExchangeDate` date NOT NULL,
   `GiftExchangeCreatedAt` datetime NOT NULL

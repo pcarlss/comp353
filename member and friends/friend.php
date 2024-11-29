@@ -11,30 +11,47 @@ if (!isset($_SESSION['username'])) {
 // Get the logged-in username from the session
 $username = $_SESSION['username'];
 
-// Fetch the member ID
-$stmt = $conn->prepare("SELECT memberid FROM Member WHERE username = ?");
+// Fetch the member ID and profilePic
+$stmt = $conn->prepare("SELECT memberid, profilePic FROM Member WHERE username = ?");
+if (!$stmt) {
+    die("Prepare failed: (" . $conn->errno . ") " . $conn->error);
+}
 $stmt->bind_param("s", $username);
 $stmt->execute();
 $result = $stmt->get_result();
 
-if ($result->num_rows > 0) {
-    $row = $result->fetch_assoc(); // Fetch the row as an associative array
-    $memberid = $row['memberid'];  // Extract the member ID
-    $_SESSION['memberid'] = $memberid;
+if ($result && $result->num_rows > 0) {
+    $row = $result->fetch_assoc();
+    $memberID = $row['memberid'];
+    $_SESSION['memberid'] = $memberID;
+    $userProfilePic = $row['profilePic'];
 } else {
-    die("Error: User not found.");
+    header("Location: error.php?message=User+not+found");
+    exit();
 }
 
 $stmt->close();
+
+// Function to get profile picture URL
+function getProfilePic($profilePic) {
+    $defaultPicPath = "../uploads/images/default_pfp.png";
+
+    // If profilePic is set and the file exists, return its path
+    if (!empty($profilePic) && file_exists(__DIR__ . "/../" . $profilePic)) {
+        return "../" . htmlspecialchars($profilePic);
+    } else {
+        return $defaultPicPath;
+    }
+}
 
 // Get the logged-in user's ID and username
 $loggedInUsername = $_SESSION['username'];
 $loggedInUserID = $_SESSION['memberid'];
 
-// Retrieve usernames excluding the logged-in user and users who are blocked or have blocked the user
+// Retrieve users excluding the logged-in user and users who are blocked or have blocked the user
 $users = [];
 $stmt = $conn->prepare("
-    SELECT MemberID, Username, 
+    SELECT MemberID, Username, profilePic,
     CASE WHEN EXISTS (
         SELECT 1 FROM Friendship 
         WHERE (MemberID1 = ? AND MemberID2 = Member.MemberID) 
@@ -55,6 +72,9 @@ $stmt = $conn->prepare("
         WHERE MemberID2 = ? AND MemberID1 = Member.MemberID
     )
 ");
+if (!$stmt) {
+    die("Prepare failed: (" . $conn->errno . ") " . $conn->error);
+}
 $stmt->bind_param("iiiiii", $loggedInUserID, $loggedInUserID, $loggedInUserID, $loggedInUserID, $loggedInUserID, $loggedInUserID);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -63,62 +83,85 @@ while ($row = $result->fetch_assoc()) {
 }
 $stmt->close();
 
-// Handle friend request, cancel friend request, or block submission via AJAX
+// Handle friend request, cancel friend request, or block/unblock submission via AJAX
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
     $response = [];
 
     if (isset($_POST['requesteeID']) && isset($_POST['action'])) {
-        $requesteeID = $_POST['requesteeID'];
+        $requesteeID = intval($_POST['requesteeID']);
         $action = $_POST['action'];
 
         if ($action === "block") {
             // Remove any existing friendship
             $stmt = $conn->prepare("DELETE FROM Friendship WHERE (MemberID1 = ? AND MemberID2 = ?) OR (MemberID2 = ? AND MemberID1 = ?)");
-            $stmt->bind_param("iiii", $loggedInUserID, $requesteeID, $loggedInUserID, $requesteeID);
-            $stmt->execute();
-            $stmt->close();
+            if ($stmt) {
+                $stmt->bind_param("iiii", $loggedInUserID, $requesteeID, $loggedInUserID, $requesteeID);
+                $stmt->execute();
+                $stmt->close();
+            }
 
             // Block the user
             $stmt = $conn->prepare("INSERT INTO Blocked (MemberID1, MemberID2) VALUES (?, ?)");
-            $stmt->bind_param("ii", $loggedInUserID, $requesteeID);
-            if ($stmt->execute()) {
-                $response['message'] = "User blocked successfully.";
-            } else {
-                $response['message'] = "Failed to block user.";
+            if ($stmt) {
+                $stmt->bind_param("ii", $loggedInUserID, $requesteeID);
+                if ($stmt->execute()) {
+                    $response['message'] = "User blocked successfully.";
+                } else {
+                    $response['message'] = "Failed to block user.";
+                }
+                $stmt->close();
             }
-            $stmt->close();
         } elseif ($action === "unblock") {
             // Unblock the user
             $stmt = $conn->prepare("DELETE FROM Blocked WHERE MemberID1 = ? AND MemberID2 = ?");
-            $stmt->bind_param("ii", $loggedInUserID, $requesteeID);
-            if ($stmt->execute()) {
-                $response['message'] = "User unblocked successfully.";
-            } else {
-                $response['message'] = "Failed to unblock user.";
+            if ($stmt) {
+                $stmt->bind_param("ii", $loggedInUserID, $requesteeID);
+                if ($stmt->execute()) {
+                    $response['message'] = "User unblocked successfully.";
+                } else {
+                    $response['message'] = "Failed to unblock user.";
+                }
+                $stmt->close();
             }
-            $stmt->close();
         } elseif ($action === "friendRequest") {
-            // Send a friend request
-            $stmt = $conn->prepare("INSERT INTO FriendOrGroupRequest (RequestorID, RequesteeID, RequestMadeAt) VALUES (?, ?, ?)");
-            $requestMadeAt = date("Y-m-d H:i:s");
-            $stmt->bind_param("iis", $loggedInUserID, $requesteeID, $requestMadeAt);
-            if ($stmt->execute()) {
-                $response['message'] = "Friend request sent successfully.";
-            } else {
-                $response['message'] = "Failed to send friend request.";
+            // Check if a friend request already exists
+            $stmt = $conn->prepare("SELECT * FROM FriendOrGroupRequest WHERE RequestorID = ? AND RequesteeID = ?");
+            if ($stmt) {
+                $stmt->bind_param("ii", $loggedInUserID, $requesteeID);
+                $stmt->execute();
+                $existingRequest = $stmt->get_result();
+                $stmt->close();
+
+                if ($existingRequest->num_rows > 0) {
+                    $response['message'] = "Friend request already sent.";
+                } else {
+                    // Send a friend request
+                    $stmt = $conn->prepare("INSERT INTO FriendOrGroupRequest (RequestorID, RequesteeID, RequestMadeAt) VALUES (?, ?, ?)");
+                    if ($stmt) {
+                        $requestMadeAt = date("Y-m-d H:i:s");
+                        $stmt->bind_param("iis", $loggedInUserID, $requesteeID, $requestMadeAt);
+                        if ($stmt->execute()) {
+                            $response['message'] = "Friend request sent successfully.";
+                        } else {
+                            $response['message'] = "Failed to send friend request.";
+                        }
+                        $stmt->close();
+                    }
+                }
             }
-            $stmt->close();
         } elseif ($action === "cancelFriendRequest") {
             // Cancel a friend request
             $stmt = $conn->prepare("DELETE FROM FriendOrGroupRequest WHERE RequestorID = ? AND RequesteeID = ?");
-            $stmt->bind_param("ii", $loggedInUserID, $requesteeID);
-            if ($stmt->execute()) {
-                $response['message'] = "Friend request canceled.";
-            } else {
-                $response['message'] = "Failed to cancel friend request.";
+            if ($stmt) {
+                $stmt->bind_param("ii", $loggedInUserID, $requesteeID);
+                if ($stmt->execute()) {
+                    $response['message'] = "Friend request canceled.";
+                } else {
+                    $response['message'] = "Failed to cancel friend request.";
+                }
+                $stmt->close();
             }
-            $stmt->close();
         }
 
         echo json_encode($response);
@@ -126,11 +169,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 }
-?>
 
+// Close the database connection if not already closed
+if ($conn) {
+    $conn->close();
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Existing head content -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Search for Users</title>
@@ -149,11 +197,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             justify-content: center;
             background-color: #f0f2f5;
             font-family: Arial, sans-serif;
-            padding-top: 120px;
+            padding-top: 120px; /* Adjusted to accommodate the fixed top bar */
             overflow-y: scroll;
         }
 
-        /* Top Bar Styling */
+        /* Top Bar Styling (Unchanged) */
         .top-bar {
             position: fixed;
             top: 0;
@@ -194,124 +242,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 10px;
         }
 
-        .post {
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            margin-bottom: 20px;
+        /* Dropdown Item Styling */
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
             cursor: pointer;
+            transition: background-color 0.2s;
         }
 
-        .post h3 {
-            font-size: 1.2em;
+        .dropdown-item img {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 10px;
+            border: 1px solid #ccc;
+        }
+
+        .dropdown-item span {
+            font-size: 1em;
             color: #333;
-            margin-bottom: 10px;
         }
 
-        .post p {
-            color: #555;
-            font-size: 1em;
-            line-height: 1.5;
+        .dropdown-item:hover {
+            background-color: #f1f1f1;
         }
 
-        .comment-section {
-            display: none;
-            margin-top: 15px;
-        }
-
-        .comment-section textarea {
-            width: 100%;
-            padding: 10px;
-            border-radius: 5px;
-            border: 1px solid #ddd;
-            font-size: 1em;
-            resize: none;
-        }
-
-        .comment-section button {
-            background-color: #4c87ae;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-
-        .post-form {
+        /* Dropdown Content */
+        .dropdown-content {
+            position: absolute;
             background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            margin-bottom: 20px;
             width: 100%;
-            max-width: 600px;
+            max-height: 300px;
+            overflow-y: auto;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1;
+            border-radius: 0 0 4px 4px;
         }
 
-        .post-form h3 {
-            font-size: 1.2em;
-            color: #333;
-            margin-bottom: 10px;
-        }
-
-        .post-form textarea {
+        /* Ensure the search box size remains unchanged */
+        .dropdown input[type="text"] {
             width: 100%;
-            padding: 10px;
-            border-radius: 5px;
-            border: 1px solid #ddd;
-            font-size: 1em;
-            resize: none;
-            margin-bottom: 10px;
-        }
-
-        .post-form button {
-            background-color: #4c87ae;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        .success-banner {
-            background-color: #28a745;
-            color: white;
-            padding: 10px;
-            text-align: center;
-            font-weight: bold;
-            position: fixed;
-            top: 0;
-            width: 100%;
-            z-index: 1001;
-        }
-        input[type="text"] {
-            width: 100%;
-            max-width: 300px;
+            max-width: 300px; /* Maintain consistent size */
             padding: 10px;
             border: 1px solid #ccc;
             border-radius: 4px;
             box-sizing: border-box;
         }
-        .dropdown-content {
-            display: none;
-            background-color: #f9f9f9;
-            width: 100%;
-            max-width: 300px;
-            box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2);
-            z-index: 1;
-            border-radius: 0 0 4px 4px;
-            overflow: hidden;
-            top: 100%;
-        }
-        .dropdown-content div {
-            padding: 12px 16px;
-            cursor: pointer;
-            color: #333;
-        }
-        .dropdown-content div:hover {
-            background-color: #f1f1f1;
-        }
+
+        /* Selected User Box Styling */
         .selected-user-box {
             margin-top: 20px;
             padding: 20px;
@@ -323,30 +303,113 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             background-color: #fff;
         }
-        .selected-user-box .username-text {
-            font-size: 1em;
-            color: #333;
-            margin: 0;
-            padding: 0;
+
+        .selected-user-box img {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #4c87ae;
+            margin-bottom: 10px;
         }
+
+        .selected-user-box .username-text {
+            font-size: 1.2em;
+            color: #4c87ae;
+            text-align: center;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+
         .selected-user-box button {
             margin-top: 10px;
-            padding: 10px 20px;
+            padding: 8px 12px;
             cursor: pointer;
             border: none;
-            background-color: #007BFF;
+            background-color: #4c87ae;
             color: #fff;
             border-radius: 4px;
             font-size: 1em;
-            width: 100%;
+            width: auto;
+            max-width: 100%;
+            transition: background-color 0.3s, transform 0.2s;
         }
+
+        .selected-user-box button:hover {
+            background-color: #6caad3;
+            transform: scale(1.05);
+        }
+
+        .selected-user-box button:active {
+            background-color: #3b6892;
+            transform: scale(0.98);
+        }
+
         .selected-user-box button.block {
-            background-color: #DC3545;
+            background-color: #dc3545;
+        }
+
+        .selected-user-box button.block:hover {
+            background-color: #ff6b6b;
+        }
+
+        /* Notification Styles */
+        .notification {
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+            max-width: 600px;
+            margin: 20px auto;
+            opacity: 1;
+            transition: opacity 0.5s ease-out;
+        }
+
+        .notification.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .notification.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .notification.warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .dropdown-item img {
+                width: 25px;
+                height: 25px;
+            }
+
+            .dropdown-item span {
+                font-size: 0.9em;
+            }
+
+            .selected-user-box {
+                max-width: 100%;
+            }
+
+            .selected-user-box img {
+                width: 60px;
+                height: 60px;
+            }
+
+            .selected-user-box button {
+                padding: 6px 10px;
+                font-size: 0.9em;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- Top Bar -->
+    <!-- Top Bar (Unchanged) -->
     <div class="top-bar">
         <h1>Add Friends</h1>
         <a href="friendlist.php"><button>
@@ -368,8 +431,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input type="text" id="searchInput" placeholder="Search User" autocomplete="off" onfocus="openDropdown()" oninput="filterFunction()" style="width: 100%;">
                 <div id="dropdownList" class="dropdown-content">
                     <?php foreach ($users as $user): ?>
-                        <div onclick="selectUser('<?php echo $user['Username']; ?>', '<?php echo $user['MemberID']; ?>', <?php echo $user['IsFriend']; ?>, <?php echo $user['IsBlocked']; ?>, <?php echo $user['IsRequestSent']; ?>)">
-                            <?php echo htmlspecialchars($user['Username']); ?>
+                        <div class="dropdown-item" onclick="selectUser('<?php echo htmlspecialchars($user['Username']); ?>', '<?php echo htmlspecialchars($user['MemberID']); ?>', '<?php echo getProfilePic($user['profilePic']); ?>', <?php echo $user['IsFriend']; ?>, <?php echo $user['IsBlocked']; ?>, <?php echo $user['IsRequestSent']; ?>)">
+                            <img src="<?php echo getProfilePic($user['profilePic']); ?>" alt="Profile Picture of <?php echo htmlspecialchars($user['Username']); ?>">
+                            <span><?php echo htmlspecialchars($user['Username']); ?></span>
                         </div>
                     <?php endforeach; ?>
                 </div>
@@ -378,12 +442,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <!-- Selected User Info -->
         <div id="selectedUserContainer" class="selected-user-box" style="display: none; padding-top: 20px; margin: auto">
+            <img id="selectedUserProfilePic" src="<?php echo getProfilePic($userProfilePic); ?>" alt="Selected User's Profile Picture">
             <p id="selectedUsername" class="username-text"></p>
             <button id="sendRequestButton" onclick="sendFriendRequest()">Send Friend Request</button>
             <button id="blockButton" class="block" onclick="blockUser()">Block User</button>
         </div>
     </div>
 
+    <!-- Notification Section -->
+    <?php if (!empty($message)): ?>
+        <div class="notification <?php echo htmlspecialchars($messageType); ?>">
+            <?php echo htmlspecialchars($message); ?>
+        </div>
+    <?php endif; ?>
+
+    <!-- JavaScript -->
     <script>
         let selectedUserID;
         let isAlreadyFriend = false;
@@ -405,13 +478,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        function selectUser(username, userID, isFriend, isBlockedStatus, isRequestSentStatus) {
+        function selectUser(username, userID, profilePic, isFriend, isBlockedStatus, isRequestSentStatus) {
             document.getElementById("selectedUsername").textContent = username;
             document.getElementById("selectedUserContainer").style.display = "block";
             selectedUserID = userID;
             isAlreadyFriend = isFriend === 1;
             isBlocked = isBlockedStatus === 1;
             isRequestSent = isRequestSentStatus === 1;
+
+            // Set the profile picture of the selected user
+            const selectedUserProfilePic = document.getElementById("selectedUserProfilePic");
+            selectedUserProfilePic.src = profilePic;
+            selectedUserProfilePic.alt = "Profile Picture of " + username;
 
             const friendButton = document.getElementById("sendRequestButton");
             const blockButton = document.getElementById("blockButton");
@@ -447,10 +525,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (xhr.readyState === 4 && xhr.status === 200) {
                     const response = JSON.parse(xhr.responseText);
                     alert(response.message);
-
                     if (response.message === "Friend request sent successfully.") {
                         isRequestSent = true;
-                        selectUser(document.getElementById("selectedUsername").textContent, selectedUserID, isAlreadyFriend, isBlocked, 1);
+                        selectUser(
+                            document.getElementById("selectedUsername").textContent,
+                            selectedUserID,
+                            document.getElementById("selectedUserProfilePic").src,
+                            isAlreadyFriend,
+                            isBlocked,
+                            1
+                        );
                     }
                 }
             };
@@ -465,10 +549,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (xhr.readyState === 4 && xhr.status === 200) {
                     const response = JSON.parse(xhr.responseText);
                     alert(response.message);
-
                     if (response.message === "Friend request canceled.") {
                         isRequestSent = false;
-                        selectUser(document.getElementById("selectedUsername").textContent, selectedUserID, isAlreadyFriend, isBlocked, 0);
+                        selectUser(
+                            document.getElementById("selectedUsername").textContent,
+                            selectedUserID,
+                            document.getElementById("selectedUserProfilePic").src,
+                            isAlreadyFriend,
+                            isBlocked,
+                            0
+                        );
                     }
                 }
             };
@@ -483,8 +573,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (xhr.readyState === 4 && xhr.status === 200) {
                     const response = JSON.parse(xhr.responseText);
                     alert(response.message);
-                    isBlocked = true;
-                    selectUser(document.getElementById("selectedUsername").textContent, selectedUserID, isAlreadyFriend, 1, isRequestSent);
+                    if (response.message === "User blocked successfully.") {
+                        isBlocked = true;
+                        selectUser(
+                            document.getElementById("selectedUsername").textContent,
+                            selectedUserID,
+                            document.getElementById("selectedUserProfilePic").src,
+                            isAlreadyFriend,
+                            1,
+                            isRequestSent
+                        );
+                    }
                 }
             };
             xhr.send("requesteeID=" + selectedUserID + "&action=block");
@@ -498,7 +597,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (xhr.readyState === 4 && xhr.status === 200) {
                     const response = JSON.parse(xhr.responseText);
                     alert(response.message);
-
                     if (response.message === "User unblocked successfully.") {
                         isBlocked = false;
 
@@ -526,11 +624,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             xhr.send("requesteeID=" + selectedUserID + "&action=unblock");
         }
 
-        window.onclick = function(event) {
-            if (!event.target.matches('#searchInput')) {
+        window.onclick = function (event) {
+            if (!event.target.matches("#searchInput")) {
                 document.getElementById("dropdownList").style.display = "none";
             }
-        }
+        };
     </script>
 </body>
 </html>

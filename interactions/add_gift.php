@@ -29,9 +29,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['giftexchange_id']) &&
         exit;
     }
 
-    gift_content = $conn->real_escape_string($_POST['gift_content']);
+    $gift_content = $conn->real_escape_string($_POST['gift_content']);
 
-    // Insert comment into the Comment table
+    // Insert gift into the Gift table
     $sql = "INSERT INTO Gift (GiftExchangeEventID, GiftName, GiftforID) VALUES ('$giftexchange_id', '$gift_name', '$member_id')";
 
     if ($conn->query($sql) === TRUE) {

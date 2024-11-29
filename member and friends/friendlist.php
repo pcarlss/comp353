@@ -2,9 +2,14 @@
 require '../session/db_connect.php';
 session_start();
 
+// Enable error reporting for debugging (remove in production)
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 // Ensure the user is logged in
 if (!isset($_SESSION['username'])) {
-    header("Location: login.php");
+    header("Location: ../login.php");
     exit;
 }
 $username = $_SESSION['username'];
@@ -21,7 +26,7 @@ if ($result && $result->num_rows > 0) {
     $_SESSION['memberid'] = $memberID;
     $userProfilePic = $row['profilePic'];
 } else {
-    header("Location: error.php?message=User+not+found");
+    header("Location: ../error.php?message=User+not+found");
     exit();
 }
 
@@ -30,37 +35,23 @@ function getProfilePic($profilePic) {
     $defaultPicPath = "../uploads/images/default_pfp.png";
 
     // If profilePic is set and the file exists, return its path
-    if (!empty($profilePic) && file_exists(__DIR__ . "/../uploads/images/" . $profilePic)) {
-        return "../uploads/images/" . htmlspecialchars($profilePic);
+    if (!empty($profilePic) && file_exists(__DIR__ . "/../" . $profilePic)) {
+        return "../" . htmlspecialchars($profilePic);
     } else {
         return $defaultPicPath;
     }
 }
-
-// Initialize message variables
-$message = "";
-$messageType = "";
 
 // Handle friend removal
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['removeFriendID'])) {
     $removeFriendID = $_POST['removeFriendID'];
 
     // Prevent users from removing themselves
-    if ($removeFriendID == $memberID) {
-        $message = "You cannot remove yourself.";
-        $messageType = "error";
-    } else {
+    if ($removeFriendID != $memberID) {
         // Delete the friendship entry where the logged-in user is either MemberID1 or MemberID2
         $stmt = $conn->prepare("DELETE FROM Friendship WHERE (MemberID1 = ? AND MemberID2 = ?) OR (MemberID1 = ? AND MemberID2 = ?)");
         $stmt->bind_param("iiii", $memberID, $removeFriendID, $removeFriendID, $memberID);
-
-        if ($stmt->execute()) {
-            $message = "Friend removed successfully.";
-            $messageType = "success";
-        } else {
-            $message = "Failed to remove friend.";
-            $messageType = "error";
-        }
+        $stmt->execute();
         $stmt->close();
     }
 }
@@ -72,15 +63,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acceptFriendID']) && 
 
     // Validate RelationshipType
     $allowedTypes = ['Family', 'Friend', 'Colleague'];
-    if (!in_array($relationshipType, $allowedTypes)) {
-        $message = "Invalid relationship type selected.";
-        $messageType = "error";
-    } else {
+    if (in_array($relationshipType, $allowedTypes)) {
         // Prevent users from adding themselves
-        if ($acceptFriendID == $memberID) {
-            $message = "You cannot add yourself as a friend.";
-            $messageType = "error";
-        } else {
+        if ($acceptFriendID != $memberID) {
             // Check if the friendship already exists
             $stmt = $conn->prepare("
                 SELECT * FROM Friendship 
@@ -90,12 +75,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acceptFriendID']) && 
             $stmt->bind_param("iiii", $memberID, $acceptFriendID, $acceptFriendID, $memberID);
             $stmt->execute();
             $existingFriendship = $stmt->get_result();
-            $stmt->close();
 
-            if ($existingFriendship->num_rows > 0) {
-                $message = "You are already friends with this user.";
-                $messageType = "warning";
-            } else {
+            if ($existingFriendship->num_rows == 0) {
                 // Insert into the Friendship table with the selected RelationshipType
                 $stmt = $conn->prepare("
                     INSERT INTO Friendship (MemberID1, MemberID2, RelationshipType) 
@@ -107,16 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acceptFriendID']) && 
                     // Delete the friend request after accepting
                     $stmt = $conn->prepare("DELETE FROM FriendOrGroupRequest WHERE RequestorID = ? AND RequesteeID = ?");
                     $stmt->bind_param("ii", $acceptFriendID, $memberID);
-                    if ($stmt->execute()) {
-                        $message = "Friend request accepted as " . htmlspecialchars($relationshipType) . ".";
-                        $messageType = "success";
-                    } else {
-                        $message = "Friend request accepted, but failed to remove the request entry.";
-                        $messageType = "warning";
-                    }
-                } else {
-                    $message = "Failed to accept friend request.";
-                    $messageType = "error";
+                    $stmt->execute();
                 }
                 $stmt->close();
             }
@@ -129,21 +101,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['declineFriendID'])) {
     $declineFriendID = $_POST['declineFriendID'];
 
     // Prevent users from declining their own requests
-    if ($declineFriendID == $memberID) {
-        $message = "You cannot decline your own friend request.";
-        $messageType = "error";
-    } else {
+    if ($declineFriendID != $memberID) {
         // Delete the friend request
         $stmt = $conn->prepare("DELETE FROM FriendOrGroupRequest WHERE RequestorID = ? AND RequesteeID = ?");
         $stmt->bind_param("ii", $declineFriendID, $memberID);
-
-        if ($stmt->execute()) {
-            $message = "Friend request declined.";
-            $messageType = "success";
-        } else {
-            $message = "Failed to decline friend request.";
-            $messageType = "error";
-        }
+        $stmt->execute();
         $stmt->close();
     }
 }
@@ -179,10 +141,12 @@ $conn->close();
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- The rest of the head section remains the same -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Friend List</title>
     <style>
+        /* Include your CSS styles here */
         /* Basic reset */
         * {
             margin: 0;
@@ -386,34 +350,6 @@ $conn->close();
             padding: 20px;
         }
 
-        /* Notification Styles */
-        .notification {
-            padding: 10px;
-            margin-bottom: 20px;
-            border-radius: 5px;
-            text-align: center;
-            font-weight: bold;
-            max-width: 1400px;
-            margin: 20px auto;
-            opacity: 1;
-            transition: opacity 0.5s ease-out;
-        }
-
-        .notification.success {
-            background-color: #d4edda;
-            color: #155724;
-        }
-
-        .notification.error {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-
-        .notification.warning {
-            background-color: #fff3cd;
-            color: #856404;
-        }
-
         /* Modal Styles */
         .modal {
             display: none;
@@ -511,7 +447,7 @@ $conn->close();
     </style>
 </head>
 <body>
-<div class="top-bar">
+    <div class="top-bar">
         <h1>Friends List</h1>
         <a href="friend.php" style="margin-left: -2%">
             <button>
@@ -586,13 +522,6 @@ $conn->close();
         </div>
     </div>
 
-    <!-- Notification Section -->
-    <?php if (!empty($message)): ?>
-        <div class="notification <?php echo htmlspecialchars($messageType); ?>">
-            <?php echo htmlspecialchars($message); ?>
-        </div>
-    <?php endif; ?>
-
     <!-- Modal for Selecting Relationship Type -->
     <div id="relationshipModal" class="modal">
         <div class="modal-content">
@@ -601,7 +530,7 @@ $conn->close();
                 <h2>Select Relationship Type</h2>
             </div>
             <div class="modal-body">
-                <form id="relationshipForm" method="post" action="friends.php">
+                <form id="relationshipForm" method="post" action="friendlist.php">
                     <input type="hidden" name="acceptFriendID" id="modalAcceptFriendID" value="">
                     <label for="relationshipType">Choose Relationship Type:</label>
                     <select name="relationshipType" id="relationshipType" required>
@@ -641,19 +570,6 @@ $conn->close();
         window.onclick = function(event) {
             if (event.target == modal) {
                 closeModal();
-            }
-        }
-
-        // Auto-hide notification after 3 seconds
-        window.onload = function() {
-            var notification = document.querySelector('.notification');
-            if (notification) {
-                setTimeout(function() {
-                    notification.style.opacity = '0';
-                    setTimeout(function() {
-                        notification.style.display = 'none';
-                    }, 500); // Match the CSS transition duration
-                }, 3000); // 3 seconds
             }
         }
     </script>

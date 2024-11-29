@@ -138,7 +138,6 @@ CREATE TABLE `GiftExchange` (
   `GiftExchangeID` int(50) NOT NULL,
   `GiftExchangeName` varchar(50) NOT NULL,
   `GiftExchangeDesc` varchar(50) NOT NULL,
-  `GiftGroupID` int(50) NOT NULL,
   `GiftExchangeDate` varchar(50) NOT NULL,
   `GiftExchangeCreatedAt` datetime NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

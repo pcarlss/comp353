@@ -16,7 +16,7 @@ if (!isset($_SESSION['username'])) {
 // Check if the request method is POST and required data is provided
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['giftexchange_id']) && isset($_POST['gift_name'])) {
     $giftexchange_id = intval($_POST['giftexchange_id']);
-    $gift_name = intval($_POST['gift_name']);
+    $gift_name = $conn->real_escape_string($_POST['gift_name']);
     $username = $_SESSION['username']; // Retrieve the logged-in username
 
     // Fetch the member ID for the logged-in user
@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['giftexchange_id']) &&
         exit;
     }
 
-    $gift_content = $conn->real_escape_string($_POST['gift_content']);
+    //$gift_content = $conn->real_escape_string($_POST['gift_content']);
 
     // Insert gift into the Gift table
     $sql = "INSERT INTO Gift (GiftExchangeEventID, GiftName, GiftforID) VALUES ('$giftexchange_id', '$gift_name', '$member_id')";

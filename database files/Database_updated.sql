@@ -122,10 +122,11 @@ CREATE TABLE `Friendship` (
 --
 
 CREATE TABLE `Gift` (
-  `GiftID` int(50) NOT NULL,
+  `GiftID` int(50) NOT NULL AUTO_INCREMENT,
   `GiftExchangeEventID` int(50) NOT NULL,
   `GiftName` varchar(50) NOT NULL,
-  `GiftforID` int(50) NOT NULL
+  `GiftforID` int(50) NOT NULL,
+  PRIMARY KEY (`GiftID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------

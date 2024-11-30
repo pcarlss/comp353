@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Insert gift exchange into the database
     $sql = "INSERT INTO GiftExchange (MemberID, GiftExchangeName, GiftExchangeDesc, GiftExchangeDate, GiftExchangeCreatedAt)
-            VALUES (?, ?, ?, ?)";
+            VALUES (?, ?, ?, ?, ?)";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param( "issss",$member_id, $ge_name, $ge_desc, $ge_date, $created_at);
 

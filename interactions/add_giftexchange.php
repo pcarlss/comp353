@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($stmt->execute()) {
         // Redirect to homepage after successful creation
-        header("Location: ../index.php?message=Post%20added");
+        header("Location: ../create_gift_exchange.php?message=Post%20added");
         exit;
     } else {
         echo "Error: " . $stmt->error;

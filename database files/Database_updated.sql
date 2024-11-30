@@ -135,12 +135,13 @@ CREATE TABLE `Gift` (
 --
 
 CREATE TABLE `GiftExchange` (
-  `GiftExchangeID` int(50) NOT NULL,
+  `GiftExchangeID` int(50) NOT NULL AUTO_INCREMENT,
   -- `GiftExchangeGroupID` int(50) NOT NULL,
   `GiftExchangeName` varchar(50) NOT NULL,
   `GiftExchangeDesc` varchar(50) NOT NULL,
   `GiftExchangeDate` varchar(50) NOT NULL,
-  `GiftExchangeCreatedAt` datetime NOT NULL
+  `GiftExchangeCreatedAt` datetime NOT NULL,
+  PRIMARY KEY (`GiftExchangeID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------

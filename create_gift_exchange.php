@@ -183,7 +183,7 @@ session_start();
 
 <!-- Post Form -->
 <div class="post-form">
-    <h3>Create a New Gift Exchange Event</h3>
+    <h3>Create a Gift Exchange </h3>
     <form action="interactions/add_giftexchange.php" method="POST" enctype="multipart/form-data">
         <label>Gift Exchange Name:</label>
         <input type="text" name="ge_name" id="ge_name" placeholder="Give your gift exchange a name" required><br>
@@ -207,19 +207,19 @@ session_start();
 <!-- Posts and Comments -->
 <div class="container">
     <?php
-    echo 'Gift Exchanges';
     $result = $conn->query("SELECT GiftExchange.*, Member.username FROM GiftExchange JOIN Member ON GiftExchange.memberid = Member.memberid");
+    //$result = $conn->query("SELECT Post.*, Member.username FROM Post JOIN Member ON Post.memberid = Member.memberid ORDER BY Post.PostedAt DESC");
 
 
 
     if ($result->num_rows > 0) {
         while ($row = $result->fetch_assoc()) {
             echo '<div class="post" onclick="toggleCommentSection(this)">';
-            echo '<h3>Gift Exchange Name ' . $row['GiftExchangeName'] . '</h3>';
+            echo '<h3 >' . $row['GiftExchangeName'] . '</h3>';
 
             if (!empty($row['GiftExchangeDesc'])) {
-                echo '<p>Gift Exchange Description:<br>' . htmlspecialchars($row['GiftExchangeDesc']) . '</p>';
-                echo '<p>Gift Exchange Date/Place:' . htmlspecialchars($row['GiftExchangeDesc']) . '</p>';
+                echo '<p>Description:<br>' . htmlspecialchars($row['GiftExchangeDesc']) . '</p><br>';
+                echo '<p>Date/Place:<br>' . htmlspecialchars($row['GiftExchangeDesc']) . '</p><br>';
             }
 
             $giftexchange_id = $row['GiftExchangeID'];

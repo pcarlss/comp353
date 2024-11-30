@@ -208,7 +208,10 @@ session_start();
 <div class="container">
     <?php
     echo 'Gift Exchanges';
-    $result = $conn->query("SELECT GiftExchange.* FROM GiftExchange, GroupMember WHERE GroupMember.MemberID = '{$_SESSION['memberid']}' AND GroupMember.GroupID = GiftExchange.GroupID");
+    $result = $conn->query("SELECT GiftExchange.*, Member.username FROM GiftExchange JOIN Member ON GiftExchange.memberid = Member.memberid");
+    //$result = $conn->query("SELECT Post.*, Member.username FROM Post JOIN Member ON Post.memberid = Member.memberid ORDER BY Post.PostedAt DESC");
+
+
 
     if ($result->num_rows > 0) {
         while ($row = $result->fetch_assoc()) {

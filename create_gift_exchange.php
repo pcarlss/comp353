@@ -230,7 +230,7 @@ session_start();
             if ($gifts_result->num_rows > 0) {
                 while ($gift = $gifts_result->fetch_assoc()) {
                     echo '<div class="comment">';
-                    echo '<p><strong>' . $_SESSION['username'] . ' would like a(n): </strong> ' . htmlspecialchars($$gift['GiftName']) . '</p>';
+                    echo '<p><strong>' . $_SESSION['username'] . ' would like a(n): </strong> ' . htmlspecialchars($gift['GiftName']) . '</p>';
                     echo '</div>';
                 }
             } else {

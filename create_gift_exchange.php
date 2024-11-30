@@ -209,7 +209,6 @@ session_start();
     <?php
     echo 'Gift Exchanges';
     $result = $conn->query("SELECT GiftExchange.*, Member.username FROM GiftExchange JOIN Member ON GiftExchange.memberid = Member.memberid");
-    //$result = $conn->query("SELECT Post.*, Member.username FROM Post JOIN Member ON Post.memberid = Member.memberid ORDER BY Post.PostedAt DESC");
 
 
 

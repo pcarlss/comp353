@@ -136,6 +136,7 @@ CREATE TABLE `Gift` (
 
 CREATE TABLE `GiftExchange` (
   `GiftExchangeID` int(50) NOT NULL AUTO_INCREMENT,
+  `MemberID` int(50) NOT NULL,               -- Member who created the gift exchange
   -- `GiftExchangeGroupID` int(50) NOT NULL,
   `GiftExchangeName` varchar(50) NOT NULL,
   `GiftExchangeDesc` varchar(50) NOT NULL,

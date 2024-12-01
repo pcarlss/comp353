@@ -570,7 +570,7 @@ ALTER TABLE `Vote`
   ADD CONSTRAINT `vote_ibfk_2` FOREIGN KEY (`SelectedOptionID`) REFERENCES `EventOptions` (`OptionID`) ON DELETE CASCADE ON UPDATE CASCADE;
 COMMIT;
 
-ALTER TABLE 'Member'
+ALTER TABLE `Member`
 ADD COLUMN ProfilePic VARCHAR(255) DEFAULT 'uploads/images/default_pfp.png';
 
 

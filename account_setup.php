@@ -351,11 +351,47 @@ $conn->close();
         name="dateOfBirth" 
         id="dateOfBirth" 
         placeholder="YYYY-MM-DD"
+        maxlength="10"
+        oninput="handleDateInput(this)"
         pattern="\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])"
         title="Enter a date in the format YYYY-MM-DD"
+        required
     >
     <p id="dateError" style="color: red; display: none;">Please enter a valid date in the format YYYY-MM-DD.</p>
 </div>
+
+<script>
+    function handleDateInput(input) {
+        let value = input.value.replace(/[^0-9]/g, ""); // Remove non-numeric characters
+        let formattedValue = "";
+        let cursorPosition = input.selectionStart;
+        let oldLength = input.value.length;
+
+        if (value.length > 0) {
+            formattedValue += value.substring(0, 4); // Year
+        }
+        if (value.length >= 5) {
+            formattedValue += "-" + value.substring(4, 6); // Month
+        } else if (value.length > 4) {
+            formattedValue += "-" + value.substring(4, value.length);
+        }
+        if (value.length >= 7) {
+            formattedValue += "-" + value.substring(6, 8); // Day
+        } else if (value.length > 6) {
+            formattedValue += "-" + value.substring(6, value.length);
+        }
+
+        input.value = formattedValue;
+
+        // Calculate new cursor position
+        let newLength = formattedValue.length;
+        cursorPosition += newLength - oldLength;
+        input.setSelectionRange(cursorPosition, cursorPosition);
+    }
+</script>
+
+
+
 
 <script>
     document.querySelector("form").addEventListener("submit", function (e) {
@@ -373,6 +409,7 @@ $conn->close();
         }
     });
 </script>
+
 
 
 

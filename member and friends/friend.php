@@ -64,7 +64,11 @@ $stmt = $conn->prepare("
     CASE WHEN EXISTS (
         SELECT 1 FROM FriendOrGroupRequest 
         WHERE (RequestorID = ? AND RequesteeID = Member.MemberID)
-    ) THEN 1 ELSE 0 END AS IsRequestSent
+    ) THEN 1 ELSE 0 END AS IsRequestSent,
+    CASE WHEN EXISTS (
+        SELECT 1 FROM FriendOrGroupRequest 
+        WHERE (RequestorID = Member.MemberID AND RequesteeID = ?)
+    ) THEN 1 ELSE 0 END AS HasSentRequestToMe
     FROM Member 
     WHERE MemberID != ?  -- Exclude the logged-in user
     AND NOT EXISTS (
@@ -72,10 +76,8 @@ $stmt = $conn->prepare("
         WHERE MemberID2 = ? AND MemberID1 = Member.MemberID
     )
 ");
-if (!$stmt) {
-    die("Prepare failed: (" . $conn->errno . ") " . $conn->error);
-}
-$stmt->bind_param("iiiiii", $loggedInUserID, $loggedInUserID, $loggedInUserID, $loggedInUserID, $loggedInUserID, $loggedInUserID);
+$stmt->bind_param("iiiiiii", $loggedInUserID, $loggedInUserID, $loggedInUserID, $loggedInUserID, $loggedInUserID, $loggedInUserID, $loggedInUserID);
+
 $stmt->execute();
 $result = $stmt->get_result();
 while ($row = $result->fetch_assoc()) {
@@ -125,28 +127,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->close();
             }
         } elseif ($action === "friendRequest") {
-            // Check if a friend request already exists
+            // Check if a friend request already exists from the requestee to the logged-in user
             $stmt = $conn->prepare("SELECT * FROM FriendOrGroupRequest WHERE RequestorID = ? AND RequesteeID = ?");
             if ($stmt) {
-                $stmt->bind_param("ii", $loggedInUserID, $requesteeID);
+                $stmt->bind_param("ii", $requesteeID, $loggedInUserID);
                 $stmt->execute();
                 $existingRequest = $stmt->get_result();
                 $stmt->close();
 
                 if ($existingRequest->num_rows > 0) {
-                    $response['message'] = "Friend request already sent.";
+                    // Mutual friend request exists
+                    $response['message'] = "User has already sent you a friend request. Please check your friend list.";
                 } else {
-                    // Send a friend request
-                    $stmt = $conn->prepare("INSERT INTO FriendOrGroupRequest (RequestorID, RequesteeID, RequestMadeAt) VALUES (?, ?, ?)");
+                    // Check if a friend request already exists from logged-in user to requestee
+                    $stmt = $conn->prepare("SELECT * FROM FriendOrGroupRequest WHERE RequestorID = ? AND RequesteeID = ?");
                     if ($stmt) {
-                        $requestMadeAt = date("Y-m-d H:i:s");
-                        $stmt->bind_param("iis", $loggedInUserID, $requesteeID, $requestMadeAt);
-                        if ($stmt->execute()) {
-                            $response['message'] = "Friend request sent successfully.";
-                        } else {
-                            $response['message'] = "Failed to send friend request.";
-                        }
+                        $stmt->bind_param("ii", $loggedInUserID, $requesteeID);
+                        $stmt->execute();
+                        $existingSentRequest = $stmt->get_result();
                         $stmt->close();
+
+                        if ($existingSentRequest->num_rows > 0) {
+                            $response['message'] = "Friend request already sent.";
+                        } else {
+                            // Send a friend request
+                            $stmt = $conn->prepare("INSERT INTO FriendOrGroupRequest (RequestorID, RequesteeID, RequestMadeAt) VALUES (?, ?, ?)");
+                            if ($stmt) {
+                                $requestMadeAt = date("Y-m-d H:i:s");
+                                $stmt->bind_param("iis", $loggedInUserID, $requesteeID, $requestMadeAt);
+                                if ($stmt->execute()) {
+                                    $response['message'] = "Friend request sent successfully.";
+                                    $response['isRequestSent'] = true;
+                                } else {
+                                    $response['message'] = "Failed to send friend request.";
+                                }
+                                $stmt->close();
+                            }
+                        }
                     }
                 }
             }
@@ -175,6 +192,7 @@ if ($conn) {
     $conn->close();
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -353,33 +371,6 @@ if ($conn) {
             background-color: #ff6b6b;
         }
 
-        /* Notification Styles */
-        .notification {
-            padding: 10px;
-            margin-bottom: 20px;
-            border-radius: 5px;
-            text-align: center;
-            font-weight: bold;
-            max-width: 600px;
-            margin: 20px auto;
-            opacity: 1;
-            transition: opacity 0.5s ease-out;
-        }
-
-        .notification.success {
-            background-color: #d4edda;
-            color: #155724;
-        }
-
-        .notification.error {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-
-        .notification.warning {
-            background-color: #fff3cd;
-            color: #856404;
-        }
 
         /* Responsive Design */
         @media (max-width: 768px) {
@@ -430,23 +421,25 @@ if ($conn) {
             <div class="dropdown" style="position: relative; width: 100%; max-width: 300px;">
                 <input type="text" id="searchInput" placeholder="Search User" autocomplete="off" onfocus="openDropdown()" oninput="filterFunction()" style="width: 100%;">
                 <div id="dropdownList" class="dropdown-content">
-                    <?php foreach ($users as $user): ?>
-                        <div class="dropdown-item" onclick="selectUser('<?php echo htmlspecialchars($user['Username']); ?>', '<?php echo htmlspecialchars($user['MemberID']); ?>', '<?php echo getProfilePic($user['profilePic']); ?>', <?php echo $user['IsFriend']; ?>, <?php echo $user['IsBlocked']; ?>, <?php echo $user['IsRequestSent']; ?>)">
-                            <img src="<?php echo getProfilePic($user['profilePic']); ?>" alt="Profile Picture of <?php echo htmlspecialchars($user['Username']); ?>">
-                            <span><?php echo htmlspecialchars($user['Username']); ?></span>
-                        </div>
-                    <?php endforeach; ?>
+                <?php foreach ($users as $user): ?>
+                    <div class="dropdown-item" onclick="selectUser('<?php echo htmlspecialchars($user['Username']); ?>', '<?php echo htmlspecialchars($user['MemberID']); ?>', '<?php echo getProfilePic($user['profilePic']); ?>', <?php echo $user['IsFriend']; ?>, <?php echo $user['IsBlocked']; ?>, <?php echo $user['IsRequestSent']; ?>, <?php echo $user['HasSentRequestToMe']; ?>)">
+                       <img src="<?php echo getProfilePic($user['profilePic']); ?>" alt="Profile Picture of <?php echo htmlspecialchars($user['Username']); ?>">
+                <span><?php echo htmlspecialchars($user['Username']); ?></span>
+            </div>
+        <?php endforeach; ?>
                 </div>
             </div>
         </div>
 
-        <!-- Selected User Info -->
-        <div id="selectedUserContainer" class="selected-user-box" style="display: none; padding-top: 20px; margin: auto">
-            <img id="selectedUserProfilePic" src="<?php echo getProfilePic($userProfilePic); ?>" alt="Selected User's Profile Picture">
-            <p id="selectedUsername" class="username-text"></p>
-            <button id="sendRequestButton" onclick="sendFriendRequest()">Send Friend Request</button>
-            <button id="blockButton" class="block" onclick="blockUser()">Block User</button>
-        </div>
+
+       <!-- Selected User Info -->
+      <div id="selectedUserContainer" class="selected-user-box" style="display: none; padding-top: 20px; margin: auto">
+          <img id="selectedUserProfilePic" src="<?php echo getProfilePic($userProfilePic); ?>" alt="Selected User's Profile Picture">
+          <p id="selectedUsername" class="username-text"></p>
+          <button id="sendRequestButton" onclick="sendFriendRequest()">Send Friend Request</button>
+          <button id="blockButton" class="block" onclick="blockUser()">Block User</button>
+      </div>
+
     </div>
 
     <!-- Notification Section -->
@@ -478,44 +471,57 @@ if ($conn) {
             }
         }
 
-        function selectUser(username, userID, profilePic, isFriend, isBlockedStatus, isRequestSentStatus) {
-            document.getElementById("selectedUsername").textContent = username;
-            document.getElementById("selectedUserContainer").style.display = "block";
-            selectedUserID = userID;
-            isAlreadyFriend = isFriend === 1;
-            isBlocked = isBlockedStatus === 1;
-            isRequestSent = isRequestSentStatus === 1;
+        function selectUser(username, userID, profilePic, isFriend, isBlockedStatus, isRequestSentStatus, hasSentRequestToMeStatus) {
+    document.getElementById("selectedUsername").textContent = username;
+    document.getElementById("selectedUserContainer").style.display = "block";
+    selectedUserID = userID;
+    isAlreadyFriend = isFriend === 1;
+    isBlocked = isBlockedStatus === 1;
+    isRequestSent = isRequestSentStatus === 1;
+    hasSentRequestToMe = hasSentRequestToMeStatus === 1;
 
-            // Set the profile picture of the selected user
-            const selectedUserProfilePic = document.getElementById("selectedUserProfilePic");
-            selectedUserProfilePic.src = profilePic;
-            selectedUserProfilePic.alt = "Profile Picture of " + username;
+    // Set the profile picture of the selected user
+    const selectedUserProfilePic = document.getElementById("selectedUserProfilePic");
+    selectedUserProfilePic.src = profilePic;
+    selectedUserProfilePic.alt = "Profile Picture of " + username;
 
-            const friendButton = document.getElementById("sendRequestButton");
-            const blockButton = document.getElementById("blockButton");
+    const friendButton = document.getElementById("sendRequestButton");
+    const blockButton = document.getElementById("blockButton");
 
-            if (isBlocked) {
-                friendButton.disabled = true;
-                friendButton.textContent = "User Blocked";
+    if (isBlocked) {
+        friendButton.disabled = true;
+        friendButton.textContent = "User Blocked";
 
-                blockButton.textContent = "Unblock User";
-                blockButton.onclick = unblockUser;
-            } else if (isAlreadyFriend) {
-                friendButton.disabled = true;
-                friendButton.textContent = "Friends";
+        blockButton.textContent = "Unblock User";
+        blockButton.onclick = unblockUser;
+    } else if (isAlreadyFriend) {
+        friendButton.disabled = true;
+        friendButton.textContent = "Friends";
 
-                blockButton.textContent = "Block User";
-                blockButton.onclick = blockUser;
-            } else if (isRequestSent) {
-                friendButton.disabled = false;
-                friendButton.textContent = "Cancel Friend Request";
-                friendButton.onclick = cancelFriendRequest;
-            } else {
-                friendButton.disabled = false;
-                friendButton.textContent = "Send Friend Request";
-                friendButton.onclick = sendFriendRequest;
-            }
-        }
+        blockButton.textContent = "Block User";
+        blockButton.onclick = blockUser;
+    } else if (hasSentRequestToMe) {
+        // Display "Accept Friend Request" button
+        friendButton.disabled = false;
+        friendButton.textContent = "Accept Friend Request";
+        friendButton.onclick = function() {
+            // Redirect to friendlist.php with necessary parameters
+            window.location.href = "friendlist.php?action=accept&requestorID=" + selectedUserID;
+        };
+
+        blockButton.textContent = "Block User";
+        blockButton.onclick = blockUser;
+    } else if (isRequestSent) {
+        friendButton.disabled = false;
+        friendButton.textContent = "Cancel Friend Request";
+        friendButton.onclick = cancelFriendRequest;
+    } else {
+        friendButton.disabled = false;
+        friendButton.textContent = "Send Friend Request";
+        friendButton.onclick = sendFriendRequest;
+    }
+}
+
 
         function sendFriendRequest() {
             const xhr = new XMLHttpRequest();
@@ -524,7 +530,6 @@ if ($conn) {
             xhr.onreadystatechange = function() {
                 if (xhr.readyState === 4 && xhr.status === 200) {
                     const response = JSON.parse(xhr.responseText);
-                    alert(response.message);
                     if (response.message === "Friend request sent successfully.") {
                         isRequestSent = true;
                         selectUser(
@@ -548,7 +553,6 @@ if ($conn) {
             xhr.onreadystatechange = function() {
                 if (xhr.readyState === 4 && xhr.status === 200) {
                     const response = JSON.parse(xhr.responseText);
-                    alert(response.message);
                     if (response.message === "Friend request canceled.") {
                         isRequestSent = false;
                         selectUser(
@@ -572,7 +576,6 @@ if ($conn) {
             xhr.onreadystatechange = function() {
                 if (xhr.readyState === 4 && xhr.status === 200) {
                     const response = JSON.parse(xhr.responseText);
-                    alert(response.message);
                     if (response.message === "User blocked successfully.") {
                         isBlocked = true;
                         selectUser(
@@ -596,7 +599,6 @@ if ($conn) {
             xhr.onreadystatechange = function() {
                 if (xhr.readyState === 4 && xhr.status === 200) {
                     const response = JSON.parse(xhr.responseText);
-                    alert(response.message);
                     if (response.message === "User unblocked successfully.") {
                         isBlocked = false;
 

@@ -316,7 +316,7 @@ $conn->close();
         /* Profile Container */
         .container {
             width: 100%;
-            max-width: 600px;
+            max-width: 700px;
             background-color: #fff;
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -368,16 +368,9 @@ $conn->close();
             background-color: #6caad3;
         }
 
-        /* Profile section */
-        .profile-info {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
         .profile-item {
             display: grid;
-            grid-template-columns: 1fr 2fr auto;
+            grid-template-columns: 1fr 2fr auto auto;
             align-items: center;
             gap: 10px;
             margin-bottom: 10px;
@@ -503,76 +496,173 @@ $conn->close();
             <input type="hidden" name="value" id="value">
         </form>
 
-        <!-- Profile Items -->
-        <!-- First Name -->
-        <div class="profile-item">
-            <p>First Name:</p>
-            <span id="profile-firstname"><?php echo htmlspecialchars($firstName); ?></span>
-            <input id="edit-firstname" type="text" maxlength="45" value="<?php echo htmlspecialchars($firstName); ?>" style="display: none;">
-            <button id="firstname-button" onclick="toggleEdit('firstname')">
-                <h3>Edit</h3>
-            </button>
-        </div>
+<div class="profile-item">
+    <p>First Name:</p>
+    <span id="profile-firstname"><?php echo htmlspecialchars($firstName); ?></span>
+    <input id="edit-firstname" type="text" maxlength="45" value="<?php echo htmlspecialchars($firstName); ?>" style="display: none;">
+    
+    <!-- Save Button -->
+    <button id="firstname-save-button" onclick="saveEdit('firstname')" style="display: none;">
+        <h3>Save</h3>
+    </button>
+    
+    <!-- Cancel Button -->
+    <button id="firstname-cancel-button" onclick="cancelEdit('firstname')" style="display: none;">
+        <h3>Cancel</h3>
+    </button>
+    
+    <!-- Edit Button -->
+    <button id="firstname-edit-button" onclick="toggleEdit('firstname')">
+        <h3>Edit</h3>
+    </button>
+</div>
+
 
         <!-- Last Name -->
-        <div class="profile-item">
-            <p>Last Name:</p>
-            <span id="profile-lastname"><?php echo htmlspecialchars($lastName); ?></span>
-            <input id="edit-lastname" type="text" maxlength="45" value="<?php echo htmlspecialchars($lastName); ?>" style="display: none;">
-            <button id="lastname-button" onclick="toggleEdit('lastname')">
-                <h3>Edit</h3>
-            </button>
-        </div>
+<div class="profile-item">
+    <p>Last Name:</p>
+    <span id="profile-lastname"><?php echo htmlspecialchars($lastName); ?></span>
+    <input id="edit-lastname" type="text" maxlength="45" value="<?php echo htmlspecialchars($lastName); ?>" style="display: none;">
+    
+    <!-- Save Button -->
+    <button type="button" id="lastname-save-button" class="save-button" onclick="saveEdit('lastname')" style="display: none;">
+        <h3>Save</h3>
+    </button>
+    
+    <!-- Cancel Button -->
+    <button type="button" id="lastname-cancel-button" class="cancel-button" onclick="cancelEdit('lastname')" style="display: none;">
+        <h3>Cancel</h3>
+    </button>
+    
+    <!-- Edit Button -->
+    <button type="button" id="lastname-edit-button" class="edit-button" onclick="toggleEdit('lastname')">
+        <h3>Edit</h3>
+    </button>
+</div>
+
 
         <!-- Email -->
-        <div class="profile-item">
-            <p>Email:</p>
-            <span id="profile-email"><?php echo htmlspecialchars($email); ?></span>
-            <input id="edit-email" type="email" maxlength="45" value="<?php echo htmlspecialchars($email); ?>" style="display: none;">
-            <button id="email-button" onclick="toggleEdit('email')">
-                <h3>Edit</h3>
-            </button>
-        </div>
+<div class="profile-item">
+    <p>Email:</p>
+    <span id="profile-email"><?php echo htmlspecialchars($email); ?></span>
+    <input id="edit-email" type="email" maxlength="45" value="<?php echo htmlspecialchars($email); ?>" style="display: none;">
+    
+    <!-- Save Button -->
+    <button type="button" id="email-save-button" class="save-button" onclick="saveEdit('email')" style="display: none;">
+        <h3>Save</h3>
+    </button>
+    
+    <!-- Cancel Button -->
+    <button type="button" id="email-cancel-button" class="cancel-button" onclick="cancelEdit('email')" style="display: none;">
+        <h3>Cancel</h3>
+    </button>
+    
+    <!-- Edit Button -->
+    <button type="button" id="email-edit-button" class="edit-button" onclick="toggleEdit('email')">
+        <h3>Edit</h3>
+    </button>
+</div>
+
 
         <!-- Date of Birth -->
-        <div class="profile-item">
-            <p>Date of Birth:</p>
-            <span id="profile-dob"><?php echo htmlspecialchars($dob); ?></span>
-            <input id="edit-dob" type="date" value="<?php echo htmlspecialchars($dob); ?>" style="display: none;">
-            <button id="dob-button" onclick="toggleEdit('dob')">
-                <h3>Edit</h3>
-            </button>
-        </div>
+<div class="profile-item">
+    <p>Date of Birth:</p>
+    <span id="profile-dob"><?php echo htmlspecialchars($dob); ?></span>
+    <input 
+        id="edit-dob" 
+        type="text" 
+        placeholder="YYYY-MM-DD" 
+        maxlength="10" 
+        value="<?php echo htmlspecialchars($dob); ?>" 
+        oninput="handleDateInput(this)" 
+        style="display: none;"
+    >
+    
+    <!-- Save Button -->
+    <button type="button" id="dob-save-button" class="save-button" onclick="saveEdit('dob')" style="display: none;">
+        <h3>Save</h3>
+    </button>
+    
+    <!-- Cancel Button -->
+    <button type="button" id="dob-cancel-button" class="cancel-button" onclick="cancelEdit('dob')" style="display: none;">
+        <h3>Cancel</h3>
+    </button>
+    
+    <!-- Edit Button -->
+    <button type="button" id="dob-edit-button" class="edit-button" onclick="toggleEdit('dob')">
+        <h3>Edit</h3>
+    </button>
+</div>
+
 
         <!-- City -->
-        <div class="profile-item">
-            <p>City:</p>
-            <span id="profile-city"><?php echo htmlspecialchars($city); ?></span>
-            <input id="edit-city" type="text" maxlength="45" value="<?php echo htmlspecialchars($city); ?>" style="display: none;">
-            <button id="city-button" onclick="toggleEdit('city')">
-                <h3>Edit</h3>
-            </button>
-        </div>
+<div class="profile-item">
+    <p>City:</p>
+    <span id="profile-city"><?php echo htmlspecialchars($city); ?></span>
+    <input id="edit-city" type="text" maxlength="45" value="<?php echo htmlspecialchars($city); ?>" style="display: none;">
+    
+    <!-- Save Button -->
+    <button type="button" id="city-save-button" class="save-button" onclick="saveEdit('city')" style="display: none;">
+        <h3>Save</h3>
+    </button>
+    
+    <!-- Cancel Button -->
+    <button type="button" id="city-cancel-button" class="cancel-button" onclick="cancelEdit('city')" style="display: none;">
+        <h3>Cancel</h3>
+    </button>
+    
+    <!-- Edit Button -->
+    <button type="button" id="city-edit-button" class="edit-button" onclick="toggleEdit('city')">
+        <h3>Edit</h3>
+    </button>
+</div>
+
 
         <!-- Country -->
-        <div class="profile-item">
-            <p>Country:</p>
-            <span id="profile-country"><?php echo htmlspecialchars($country); ?></span>
-            <input id="edit-country" type="text" maxlength="45" value="<?php echo htmlspecialchars($country); ?>" style="display: none;">
-            <button id="country-button" onclick="toggleEdit('country')">
-                <h3>Edit</h3>
-            </button>
-        </div>
+<div class="profile-item">
+    <p>Country:</p>
+    <span id="profile-country"><?php echo htmlspecialchars($country); ?></span>
+    <input id="edit-country" type="text" maxlength="45" value="<?php echo htmlspecialchars($country); ?>" style="display: none;">
+    
+    <!-- Save Button -->
+    <button type="button" id="country-save-button" class="save-button" onclick="saveEdit('country')" style="display: none;">
+        <h3>Save</h3>
+    </button>
+    
+    <!-- Cancel Button -->
+    <button type="button" id="country-cancel-button" class="cancel-button" onclick="cancelEdit('country')" style="display: none;">
+        <h3>Cancel</h3>
+    </button>
+    
+    <!-- Edit Button -->
+    <button type="button" id="country-edit-button" class="edit-button" onclick="toggleEdit('country')">
+        <h3>Edit</h3>
+    </button>
+</div>
+
 
         <!-- Profession -->
-        <div class="profile-item">
-            <p>Profession:</p>
-            <span id="profile-profession"><?php echo htmlspecialchars($profession); ?></span>
-            <input id="edit-profession" type="text" maxlength="45" value="<?php echo htmlspecialchars($profession); ?>" style="display: none;">
-            <button id="profession-button" onclick="toggleEdit('profession')">
-                <h3>Edit</h3>
-            </button>
-        </div>
+<div class="profile-item">
+    <p>Profession:</p>
+    <span id="profile-profession"><?php echo htmlspecialchars($profession); ?></span>
+    <input id="edit-profession" type="text" maxlength="45" value="<?php echo htmlspecialchars($profession); ?>" style="display: none;">
+    
+    <!-- Save Button -->
+    <button type="button" id="profession-save-button" class="save-button" onclick="saveEdit('profession')" style="display: none;">
+        <h3>Save</h3>
+    </button>
+    
+    <!-- Cancel Button -->
+    <button type="button" id="profession-cancel-button" class="cancel-button" onclick="cancelEdit('profession')" style="display: none;">
+        <h3>Cancel</h3>
+    </button>
+    
+    <!-- Edit Button -->
+    <button type="button" id="profession-edit-button" class="edit-button" onclick="toggleEdit('profession')">
+        <h3>Edit</h3>
+    </button>
+</div>
+
 
         <!-- Account Type -->
         <div class="profile-item">
@@ -582,104 +672,154 @@ $conn->close();
     </div>
 
     <script>
-        function toggleEdit(field) {
-            const profileField = document.getElementById('profile-' + field);
-            const editField = document.getElementById('edit-' + field);
-            const button = document.getElementById(field + '-button');
+    function toggleEdit(field) {
+        const profileField = document.getElementById('profile-' + field);
+        const editField = document.getElementById('edit-' + field);
+        const saveButton = document.getElementById(field + '-save-button');
+        const cancelButton = document.getElementById(field + '-cancel-button');
+        const editButton = document.getElementById(field + '-edit-button');
 
-            if (editField) {
-                if (editField.style.display === "none") {
-                    editField.style.display = "block";
-                    profileField.style.display = "none";
-                    button.innerHTML = "<h3>Save</h3>";
-                } else {
-                    const newValue = editField.value.trim();
+        // Show input field and Save/Cancel buttons
+        editField.style.display = "block";
+        saveButton.style.display = "inline-block";
+        cancelButton.style.display = "inline-block";
 
-                    // For email field, check uniqueness before submitting
-                    if (field === 'email') {
-                        checkEmailUniqueness(newValue)
-                            .then(isUnique => {
-                                if (isUnique) {
-                                    // Proceed to submit the form
-                                    submitProfileForm(field, newValue);
-                                } else {
-                                    // Display error message
-                                    displayErrorMessage('This email address is already registered to another account.');
-                                }
-                            })
-                            .catch(error => {
-                                console.error('Error checking email uniqueness:', error);
-                                displayErrorMessage('An error occurred while checking the email.');
-                            });
-                    } else {
-                        // For other fields, submit the form directly
+        // Hide the profile field and Edit button
+        profileField.style.display = "none";
+        editButton.style.display = "none";
+    }
+
+    function saveEdit(field) {
+        const editField = document.getElementById('edit-' + field);
+        const newValue = editField.value.trim();
+
+        // For 'dob' field, validate the date format (YYYY-MM-DD)
+        if (field === 'dob' && !/^\d{4}-\d{2}-\d{2}$/.test(newValue)) {
+            displayErrorMessage("Please enter a valid date in the format YYYY-MM-DD.");
+            return;
+        }
+
+        // For email field, check uniqueness before submitting
+        if (field === 'email') {
+            checkEmailUniqueness(newValue)
+                .then(isUnique => {
+                    if (isUnique) {
+                        // Proceed to submit the form
                         submitProfileForm(field, newValue);
+                    } else {
+                        // Display error message
+                        displayErrorMessage('This email address is already registered to another account.');
                     }
-                }
-            }
-        }
-
-        function submitProfileForm(field, value) {
-            document.getElementById('field').value = field;
-            document.getElementById('value').value = value;
-            document.getElementById('profileForm').submit();
-        }
-
-        function checkEmailUniqueness(email) {
-            return fetch('profile.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: 'action=check_email&email=' + encodeURIComponent(email)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.isUnique) {
-                    return true;
-                } else {
-                    return false;
-                }
-            });
-        }
-
-        function displayErrorMessage(message) {
-            // Create or update the error message div
-            let errorDiv = document.querySelector('.message.error');
-            if (!errorDiv) {
-                errorDiv = document.createElement('div');
-                errorDiv.className = 'message error';
-                document.querySelector('.container').insertBefore(errorDiv, document.querySelector('.profile-picture'));
-            }
-            errorDiv.innerHTML = '<p>' + message + '</p>';
-
-            // Set timeout to remove the error message
-            setTimeout(function() {
-                if (errorDiv) {
-                    errorDiv.style.transition = 'opacity 0.5s';
-                    errorDiv.style.opacity = '0';
-                    setTimeout(function() {
-                        errorDiv.remove();
-                    }, 500);
-                }
-            }, 3000);
-        }
-
-        // Remove messages after 3 seconds
-        window.onload = function() {
-            // Set timeout to remove messages
-            setTimeout(function() {
-                let messages = document.querySelectorAll('.message');
-                messages.forEach(function(message) {
-                    message.style.transition = 'opacity 0.5s';
-                    message.style.opacity = '0';
-                    setTimeout(function() {
-                        message.remove();
-                    }, 500); // Wait for the fade-out transition to complete
+                })
+                .catch(error => {
+                    console.error('Error checking email uniqueness:', error);
+                    displayErrorMessage('An error occurred while checking the email.');
                 });
-            }, 3000); // 3000 milliseconds = 3 seconds
-        };
-    </script>
+        } else {
+            // For other fields, submit the form directly
+            submitProfileForm(field, newValue);
+        }
+    }
+
+    function cancelEdit(field) {
+        const profileField = document.getElementById('profile-' + field);
+        const editField = document.getElementById('edit-' + field);
+        const saveButton = document.getElementById(field + '-save-button');
+        const cancelButton = document.getElementById(field + '-cancel-button');
+        const editButton = document.getElementById(field + '-edit-button');
+
+        // Hide input and Save/Cancel buttons
+        editField.style.display = "none";
+        saveButton.style.display = "none";
+        cancelButton.style.display = "none";
+
+        // Show the profile field and Edit button
+        profileField.style.display = "inline";
+        editButton.style.display = "inline";
+
+        // Reset the input value to the original value from the profile field
+        editField.value = profileField.textContent.trim();
+    }
+
+    function submitProfileForm(field, value) {
+        document.getElementById('field').value = field;
+        document.getElementById('value').value = value;
+        document.getElementById('profileForm').submit();
+    }
+
+    function checkEmailUniqueness(email) {
+        return fetch('profile.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: 'action=check_email&email=' + encodeURIComponent(email)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.isUnique) {
+                return true;
+            } else {
+                return false;
+            }
+        });
+    }
+
+    function displayErrorMessage(message) {
+        // Create or update the error message div
+        let errorDiv = document.querySelector('.message.error');
+        if (!errorDiv) {
+            errorDiv = document.createElement('div');
+            errorDiv.className = 'message error';
+            document.querySelector('.container').insertBefore(errorDiv, document.querySelector('.profile-picture'));
+        }
+        errorDiv.innerHTML = '<p>' + message + '</p>';
+
+        // Set timeout to remove the error message
+        setTimeout(function() {
+            if (errorDiv) {
+                errorDiv.style.transition = 'opacity 0.5s';
+                errorDiv.style.opacity = '0';
+                setTimeout(function() {
+                    errorDiv.remove();
+                }, 500);
+            }
+        }, 3000);
+    }
+
+    // Remove messages after 3 seconds
+    window.onload = function() {
+        // Set timeout to remove messages
+        setTimeout(function() {
+            let messages = document.querySelectorAll('.message');
+            messages.forEach(function(message) {
+                message.style.transition = 'opacity 0.5s';
+                message.style.opacity = '0';
+                setTimeout(function() {
+                    message.remove();
+                }, 500); // Wait for the fade-out transition to complete
+            });
+        }, 3000); // 3000 milliseconds = 3 seconds
+    };
+
+    function handleDateInput(input) {
+        let value = input.value.replace(/[^0-9]/g, ""); // Remove non-numeric characters
+
+        // Dynamically format to YYYY-MM-DD
+        let formattedValue = "";
+        if (value.length > 0) {
+            formattedValue += value.substring(0, 4); // Year
+        }
+        if (value.length > 4) {
+            formattedValue += "-" + value.substring(4, 6); // Month
+        }
+        if (value.length > 6) {
+            formattedValue += "-" + value.substring(6, 8); // Day
+        }
+
+        input.value = formattedValue; // Update input value
+    }
+</script>     
 
 </body>
 

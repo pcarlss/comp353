@@ -173,7 +173,8 @@ session_start();
             </button>
         </a>
         <?php
-        echo '<a href="create_gift_exchange.php"><button><h3>Create Community Event</h3></button></a>';
+        echo '<a href="Events/create_social_event.php"><button><h3>Create Social Event</h3></button></a>';
+        echo '<a href="GiftExchange/create_gift_exchange.php"><button><h3>Create Gift Exchange</h3></button></a>';
         if (isset($_SESSION['username'])) {
             echo '<a href="profile.php"><button><h3>Profile</h3></button></a>';
         } else {

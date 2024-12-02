@@ -72,7 +72,7 @@ CREATE TABLE `Event` (
   `EventName` varchar(50) NOT NULL,
   `EventDesc` varchar(50) NOT NULL,
   `EventCreatorID` int(50) NOT NULL,
-  `EventGroupID` int(50) NOT NULL,
+  `EventGroupID` int(50) NULL,
   `EventPostedAt` datetime NOT NULL DEFAULT NOW(),
   PRIMARY KEY (`EventID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

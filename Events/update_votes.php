@@ -1,5 +1,5 @@
 <?php
-require 'session/db_connect.php';
+require '../session/db_connect.php';
 session_start();
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -10,7 +10,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $sql = "UPDATE EventOptions SET Votes = Votes + 1 WHERE OptionID = $record_id";
 
     if ($conn->query($sql) === TRUE) {
-        header("Location: ../index.php");
+        header("Location: create_social_event.php");
         exit;
     } else {
         echo "Error: " . $sql . "<br>" . $conn->error;

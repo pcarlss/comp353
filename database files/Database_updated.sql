@@ -140,7 +140,7 @@ CREATE TABLE `Gift` (
 CREATE TABLE `GiftExchange` (
   `GiftExchangeID` int(50) NOT NULL AUTO_INCREMENT,
   `MemberID` int(50) NOT NULL,               -- Member who created the gift exchange
-  `GiftGroupID` int(50) NOT NULL,            -- Uncommented this line
+  `GiftGroupID` int(50) NULL,            -- Uncommented this line
   `GiftExchangeName` varchar(50) NOT NULL,
   `GiftExchangeDesc` varchar(50) NOT NULL,
   `GiftExchangeDate` varchar(50) NOT NULL,

@@ -4,22 +4,19 @@ require 'session/db_connect.php';
 session_start();
 
 $errors = [];
-
-// Check for errors in the session
-if (isset($_SESSION['login_errors'])) {
-    $errors = $_SESSION['login_errors'];
-    unset($_SESSION['login_errors']); // Clear errors from session after fetching
-}
+$activeForm = 'login'; // Default active form
 
 // Check if form data has been submitted
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    // Get form data and validate
-    $username = $_POST['username'];
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['form_type']) && $_POST['form_type'] === 'signup') {
+    // **Sign-Up Form Processing**
+
+    // Get form data and sanitize
+    $username = trim($_POST['username']);
     $password = $_POST['password'];
     $confirmPassword = $_POST['confirmPassword'];
-    $firstName = $_POST['firstName'];
-    $lastName = $_POST['lastName'];
-    $email = $_POST['email'];
+    $firstName = trim($_POST['firstName']);
+    $lastName = trim($_POST['lastName']);
+    $email = trim($_POST['email']);
     $dateOfBirth = !empty($_POST['dateOfBirth']) ? trim($_POST['dateOfBirth']) : null;
     $city = !empty($_POST['city']) ? trim($_POST['city']) : null;
     $country = !empty($_POST['country']) ? trim($_POST['country']) : null;
@@ -30,6 +27,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (empty($username) || empty($password) || empty($confirmPassword) || empty($firstName) || empty($lastName) || empty($email)) {
         $errors[] = "All required fields must be filled out.";
     }
+
     if ($password !== $confirmPassword) {
         $errors[] = "Passwords do not match.";
     }
@@ -39,10 +37,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $errors[] = "Please enter a valid email address.";
     }
 
-// Validate date of birth
-if (isset($_POST['dateOfBirth'])) { // Check if the field is submitted
-    $dateOfBirth = trim($_POST['dateOfBirth']); // Trim to remove unnecessary spaces
-
+    // Validate date of birth
     if (!empty($dateOfBirth)) {
         $dateParts = explode('-', $dateOfBirth);
 
@@ -61,52 +56,81 @@ if (isset($_POST['dateOfBirth'])) { // Check if the field is submitted
     } else {
         $dateOfBirth = null; // Allow null if the field is empty
     }
-}
 
-
-
-    // If no errors, proceed to insert data
+    // Check for duplicate username or email before inserting into database
     if (empty($errors)) {
-        // Hash the password
-        $hashedPassword = $password;
+        // Use case-insensitive comparison
+        $stmt = $conn->prepare("SELECT Username, Email FROM Member WHERE LOWER(Username) = LOWER(?) OR LOWER(Email) = LOWER(?)");
+        if ($stmt) {
+            $stmt->bind_param("ss", $username, $email);
+            $stmt->execute();
+            $stmt->store_result();
+            if ($stmt->num_rows > 0) {
+                $stmt->bind_result($existingUsername, $existingEmail);
+                while ($stmt->fetch()) {
+                    if (strcasecmp($existingUsername, $username) === 0) { // Case-insensitive comparison
+                        $errors[] = "Username already exists.";
+                    }
+                    if (strcasecmp($existingEmail, $email) === 0) { // Case-insensitive comparison
+                        $errors[] = "Email already exists.";
+                    }
+                }
+            }
+            $stmt->close();
+        } else {
+            $errors[] = "Database error: Unable to prepare statement.";
+        }
+    }
+
+    // If there are errors, set the active form to sign-up
+    if (!empty($errors)) {
+        $activeForm = 'signup';
+    } else {
+        // If no errors, proceed to insert data
+        // **Password is stored in plain text** *(Not Recommended)*
+        $plainPassword = $password;
 
         // Default privilege and status
         $privilege = 'Junior';
         $status = 'Active';
 
         // Prepare the SQL insert statement
-        $stmt = $conn->prepare("
-            INSERT INTO Member (Username, Password, FirstName, LastName, Email, DateOfBirth, City, Country, Profession, Privilege, Status, BusinessAccount, UserCreatedAt, UserUpdatedAt)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURDATE(), CURDATE())
-        ");
+        $stmt = $conn->prepare("INSERT INTO Member (Username, Password, FirstName, LastName, Email, DateOfBirth, City, Country, Profession, Privilege, Status, BusinessAccount, UserCreatedAt, UserUpdatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURDATE(), CURDATE())");
 
-        // Bind parameters to the statement
-        $stmt->bind_param(
-            "sssssssssssi",
-            $username,
-            $hashedPassword,
-            $firstName,
-            $lastName,
-            $email,
-            $dateOfBirth,
-            $city,
-            $country,
-            $profession,
-            $privilege,
-            $status,
-            $businessAccount
-        );
+        if ($stmt) {
+            // Bind parameters to the statement
+            $stmt->bind_param(
+                "sssssssssssi",
+                $username,
+                $plainPassword,
+                $firstName,
+                $lastName,
+                $email,
+                $dateOfBirth,
+                $city,
+                $country,
+                $profession,
+                $privilege,
+                $status,
+                $businessAccount
+            );
 
-        // Execute the statement and check if successful
-        if ($stmt->execute()) {
-            header("Location: profile.php");
-            exit();
+            // Execute the statement and check if successful
+            if ($stmt->execute()) {
+                // Registration successful, redirect to profile page
+                header("Location: profile.php");
+                exit();
+            } else {
+                $errors[] = "Error during registration: " . htmlspecialchars($stmt->error, ENT_QUOTES, 'UTF-8');
+                $activeForm = 'signup';
+            }
+
+            // Close the statement
+            $stmt->close();
         } else {
-            $errors[] = "Error: " . $stmt->error;
+            $errors[] = "Database error: Unable to prepare insert statement.";
+            $activeForm = 'signup';
         }
-
-        // Close the statement
-        $stmt->close();
     }
 }
 
@@ -117,9 +141,12 @@ $conn->close();
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Meta Tags and Title -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign-up / Login</title>
+    
+    <!-- Styles -->
     <style>
         /* Basic reset */
         * {
@@ -177,11 +204,11 @@ $conn->close();
 
         .container {
             width: 100%;
-            max-width: 400px;
+            max-width: 500px;
             background-color: #fff;
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            padding: 20px;
+            padding: 30px 20px;
             text-align: center;
             margin-top: 50px;
         }
@@ -197,6 +224,7 @@ $conn->close();
             align-items: flex-start;
             gap: 10px;
             margin-bottom: 20px;
+            width: 100%;
         }
 
         form.active {
@@ -208,7 +236,9 @@ $conn->close();
             margin-bottom: 5px;
         }
 
-        input {
+        input[type="text"],
+        input[type="password"],
+        input[type="email"] {
             width: 100%;
             padding: 10px;
             font-size: 1em;
@@ -216,7 +246,7 @@ $conn->close();
             border-radius: 5px;
         }
 
-        button {
+        button[type="submit"] {
             width: 100%;
             padding: 10px;
             font-size: 1em;
@@ -226,15 +256,16 @@ $conn->close();
             border-radius: 5px;
             cursor: pointer;
             transition: background-color 0.3s;
+            margin-top: 10px;
         }
 
-        button:hover {
+        button[type="submit"]:hover {
             background-color: #6caad3;
         }
 
         .toggle-buttons {
             display: flex;
-            justify-content: space-around;
+            justify-content: center;
             margin-bottom: 20px;
         }
 
@@ -242,18 +273,59 @@ $conn->close();
             background-color: #e0e0e0;
             color: #333;
             border: none;
-            padding: 10px;
+            padding: 10px 20px;
             font-size: 1em;
             border-radius: 5px;
             cursor: pointer;
             transition: background-color 0.3s;
+            flex: 1;
         }
 
         .toggle-buttons button.active {
             background-color: #4c87ae;
             color: #fff;
         }
+
+        /* Remove space between toggle buttons */
+        .toggle-buttons button:not(:last-child) {
+            margin-right: 0px;
+        }
+
+        .error-messages {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .error-messages ul {
+            list-style-type: none;
+        }
+
+        .error-messages li {
+            color: red;
+            margin-bottom: 5px;
+            text-align: left;
+        }
+
+        .date-container {
+            width: 100%;
+            position: relative;
+        }
+
+        #dateError {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            font-size: 0.9em;
+            color: red;
+            margin-top: 2px;
+        }
+
+        .required {
+            color: red;
+        }
     </style>
+    
+    <!-- JavaScript -->
     <script>
         function toggleForm(formToShow) {
             const loginForm = document.getElementById('loginForm');
@@ -275,8 +347,9 @@ $conn->close();
         }
 
         document.addEventListener("DOMContentLoaded", () => {
-            // Default form to show
-            toggleForm('login');
+            // Determine which form to show based on PHP variable
+            const activeForm = '<?php echo $activeForm; ?>';
+            toggleForm(activeForm);
         });
     </script>
 </head>
@@ -289,145 +362,105 @@ $conn->close();
 
     <!-- Main Container -->
     <div class="container">
-    <h1>Let's Get Started</h1>
+        <h1>Let's Get Started</h1>
 
-<!-- Display Errors -->
-<?php if (!empty($errors)): ?>
-    <div class="error-messages">
-        <ul>
-            <?php foreach ($errors as $error): ?>
-                <h5 style="color: red;">
-                    <?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); 
-                          echo "<br><br> "?>
-            </h5>
-            <?php endforeach; ?>
-        </ul>
+        <!-- Display Errors for Sign-Up -->
+        <?php if (!empty($errors)): ?>
+            <div class="error-messages">
+                <ul>
+                    <?php foreach ($errors as $error): ?>
+                        <li><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        <?php endif; ?>
+
+        <!-- Toggle Buttons -->
+        <div class="toggle-buttons">
+            <button id="toggleLogin" onclick="toggleForm('login')">Log In</button>
+            <button id="toggleSignup" onclick="toggleForm('signup')">Sign Up</button>
+        </div>
+
+        <!-- Login Form -->
+        <form id="loginForm" action="session/login.php" method="POST" class="<?php echo ($activeForm === 'login') ? 'active' : ''; ?>">
+            <input type="hidden" name="form_type" value="login">
+            <label for="login-username">Username:</label>
+            <input type="text" id="login-username" name="username" required>
+
+            <label for="login-password">Password:</label>
+            <input type="password" id="login-password" name="password" required>
+
+            <button type="submit">Login</button>
+        </form>
+
+        <!-- Sign-Up Form -->
+        <form id="signupForm" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="POST" class="<?php echo ($activeForm === 'signup') ? 'active' : ''; ?>">
+            <input type="hidden" name="form_type" value="signup">
+
+            <label for="signup-username">Username<span class="required">*</span></label>
+            <input type="text" id="signup-username" name="username" value="<?php echo isset($username) ? htmlspecialchars($username, ENT_QUOTES, 'UTF-8') : ''; ?>" required>
+
+            <label for="signup-password">Password<span class="required">*</span></label>
+            <input type="password" id="signup-password" name="password" required>
+
+            <label for="signup-confirmPassword">Confirm Password<span class="required">*</span></label>
+            <input type="password" id="signup-confirmPassword" name="confirmPassword" required>
+
+            <label for="signup-firstName">First Name<span class="required">*</span></label>
+            <input type="text" id="signup-firstName" name="firstName" value="<?php echo isset($firstName) ? htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8') : ''; ?>" required>
+
+            <label for="signup-lastName">Last Name<span class="required">*</span></label>
+            <input type="text" id="signup-lastName" name="lastName" value="<?php echo isset($lastName) ? htmlspecialchars($lastName, ENT_QUOTES, 'UTF-8') : ''; ?>" required>
+
+            <label for="signup-email">Email<span class="required">*</span></label>
+            <input type="email" id="signup-email" name="email" value="<?php echo isset($email) ? htmlspecialchars($email, ENT_QUOTES, 'UTF-8') : ''; ?>" required>
+
+            <label for="dateOfBirth">Date of Birth</label>
+            <div class="date-container">
+                <input 
+                    type="text" 
+                    name="dateOfBirth" 
+                    id="dateOfBirth" 
+                    placeholder="YYYY-MM-DD"
+                    pattern="\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])"
+                    title="Enter a date in the format YYYY-MM-DD"
+                    value="<?php echo isset($dateOfBirth) ? htmlspecialchars($dateOfBirth, ENT_QUOTES, 'UTF-8') : ''; ?>"
+                >
+                <p id="dateError" style="color: red; display: none;">Please enter a valid date in the format YYYY-MM-DD.</p>
+            </div>
+
+            <label for="signup-city">City</label>
+            <input type="text" id="signup-city" name="city" value="<?php echo isset($city) ? htmlspecialchars($city, ENT_QUOTES, 'UTF-8') : ''; ?>">
+
+            <label for="signup-country">Country</label>
+            <input type="text" id="signup-country" name="country" value="<?php echo isset($country) ? htmlspecialchars($country, ENT_QUOTES, 'UTF-8') : ''; ?>">
+
+            <label for="signup-profession">Profession</label>
+            <input type="text" id="signup-profession" name="profession" value="<?php echo isset($profession) ? htmlspecialchars($profession, ENT_QUOTES, 'UTF-8') : ''; ?>">
+
+            <label for="signup-businessAccount">Business Account</label>
+            <input type="checkbox" id="signup-businessAccount" name="businessAccount" <?php echo (isset($businessAccount) && $businessAccount) ? 'checked' : ''; ?>>
+
+            <button type="submit">Register</button>
+        </form>
     </div>
-<?php endif; ?>
 
+    <!-- Additional JavaScript for Date Validation -->
+    <script>
+        document.querySelector("#signupForm").addEventListener("submit", function (e) {
+            const dateInput = document.getElementById("dateOfBirth");
+            const dateError = document.getElementById("dateError");
+            const dateRegex = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 
-    <!-- Toggle Buttons -->
-    <div class="toggle-buttons">
-        <button id="toggleLogin" onclick="toggleForm('login')">Log In</button>
-        <button id="toggleSignup" onclick="toggleForm('signup')">Sign Up</button>
-    </div>
+            // Hide error by default
+            dateError.style.display = "none";
 
-    <!-- Login Form -->
-    <form id="loginForm" action="session/login.php" method="POST" class="active">
-        <label for="login-username">Username:</label>
-        <input type="text" id="login-username" name="username" required>
-
-        <label for="login-password">Password:</label>
-        <input type="password" id="login-password" name="password" required>
-
-        <button type="submit">Login</button>
-    </form>
-
-    <!-- Sign-Up Form -->
-    <form id="signupForm" action="session/register.php" method="POST">
-        <label>Username<span class="required">*</span></label>
-        <input type="text" name="username" required>
-
-        <label>Password<span class="required">*</span></label>
-        <input type="password" id="password" name="password" required>
-
-        <label>Confirm Password<span class="required">*</span></label>
-        <input type="password" id="confirmPassword" name="confirmPassword" required>
-
-        <label>First Name<span class="required">*</span></label>
-        <input type="text" name="firstName" required>
-
-        <label>Last Name<span class="required">*</span></label>
-        <input type="text" name="lastName" required>
-
-        <label>Email<span class="required">*</span></label>
-        <input type="email" id="email" name="email" required>
-
-        
-        <label for="dateOfBirth">Date of Birth</label>
-<div class="date-container">
-    <input 
-        type="text" 
-        name="dateOfBirth" 
-        id="dateOfBirth" 
-        placeholder="YYYY-MM-DD"
-        maxlength="10"
-        oninput="handleDateInput(this)"
-        pattern="\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])"
-        title="Enter a date in the format YYYY-MM-DD"
-        required
-    >
-    <p id="dateError" style="color: red; display: none;">Please enter a valid date in the format YYYY-MM-DD.</p>
-</div>
-
-<script>
-    function handleDateInput(input) {
-        let value = input.value.replace(/[^0-9]/g, ""); // Remove non-numeric characters
-        let formattedValue = "";
-        let cursorPosition = input.selectionStart;
-        let oldLength = input.value.length;
-
-        if (value.length > 0) {
-            formattedValue += value.substring(0, 4); // Year
-        }
-        if (value.length >= 5) {
-            formattedValue += "-" + value.substring(4, 6); // Month
-        } else if (value.length > 4) {
-            formattedValue += "-" + value.substring(4, value.length);
-        }
-        if (value.length >= 7) {
-            formattedValue += "-" + value.substring(6, 8); // Day
-        } else if (value.length > 6) {
-            formattedValue += "-" + value.substring(6, value.length);
-        }
-
-        input.value = formattedValue;
-
-        // Calculate new cursor position
-        let newLength = formattedValue.length;
-        cursorPosition += newLength - oldLength;
-        input.setSelectionRange(cursorPosition, cursorPosition);
-    }
-</script>
-
-
-
-
-<script>
-    document.querySelector("form").addEventListener("submit", function (e) {
-        const dateInput = document.getElementById("dateOfBirth");
-        const dateError = document.getElementById("dateError");
-        const dateRegex = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
-
-        // Hide error by default
-        dateError.style.display = "none";
-
-        // Check if the field has a value and validate it
-        if (dateInput.value && !dateRegex.test(dateInput.value)) {
-            e.preventDefault(); // Prevent form submission
-            dateError.style.display = "block"; // Show error message
-        }
-    });
-</script>
-
-
-
-
-        <label>City</label>
-        <input type="text" name="city">
-
-        <label>Country</label>
-        <input type="text" name="country">
-
-        <label>Profession</label>
-        <input type="text" name="profession">
-
-        <label>Business Account</label>
-        <input type="checkbox" name="businessAccount">
-
-        <button type="submit">Register</button>
-    </form>
-</div>
-
+            // Check if the field has a value and validate it
+            if (dateInput.value && !dateRegex.test(dateInput.value)) {
+                e.preventDefault(); // Prevent form submission
+                dateError.style.display = "block"; // Show error message
+            }
+        });
+    </script>
 </body>
 </html>

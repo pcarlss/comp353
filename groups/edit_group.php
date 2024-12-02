@@ -35,6 +35,6 @@ $stmt->execute();
 $stmt->close();
 
 // Redirect to community page
-header("Location: community_tab.php");
+header("Location: group_tab.php");
 exit();
 ?>

@@ -167,9 +167,9 @@ session_start();
     <!-- Top Bar -->
     <div class="top-bar">
         <h1>Home</h1>
-        <a href="groups/community_tab.php" style="margin-left: 55%">
+        <a href="groups/group_tab.php" style="margin-left: 55%">
             <button>
-                <h3>Join a Community</h3>
+                <h3>Groups</h3>
             </button>
         </a>
         <?php

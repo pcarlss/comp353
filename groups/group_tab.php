@@ -41,7 +41,7 @@ $stmt->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Community Page</title>
+    <title>Group Page</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -471,7 +471,7 @@ function showAddMemberForm(groupId) {
 
         <!-- Center Title -->
         <div style="flex-grow: 1; text-align: center;">
-            <h1 style="margin: 0; font-size: 1.8rem;">Community Page</h1>
+            <h1 style="margin: 0; font-size: 1.8rem;">Group Page</h1>
         </div>
 
         <!-- Right Side: Empty for now -->
@@ -481,7 +481,7 @@ function showAddMemberForm(groupId) {
     <main>
         <!-- Display Groups Section -->
         <section class="groups-list">
-            <h2>All Communities</h2>
+            <h2>All Groups</h2>
             <ul>
     <?php
     // Fetch all groups
@@ -538,7 +538,7 @@ function showAddMemberForm(groupId) {
 
         <button onclick="toggleCreateGroupForm()">Create Group</button>
         <section id="createGroupForm" class="create-group hidden">
-            <h2>Create a New Community</h2>
+            <h2>Create a New Group</h2>
             <form action="create_group.php" method="POST">
                 <div class="form-group">
                     <label for="groupName">Group Name</label>
@@ -549,7 +549,7 @@ function showAddMemberForm(groupId) {
         </section>
         <!-- Edit Group Form -->
         <section id="editGroupForm" class="edit-group hidden">
-            <h2>Edit Community</h2>
+            <h2>Edit Group</h2>
             <form action="edit_group.php" method="POST">
                 <input type="hidden" id="editGroupId" name="groupId">
                 <div class="form-group">

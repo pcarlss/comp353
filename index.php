@@ -329,14 +329,23 @@ while ($row = $resultGroupPosts->fetch_assoc()) {
                             </span>
                         </h3>
                         <?php foreach ($posts as $row): ?>
+                            <?php
+                            // Parse visibility JSON
+                            $visibility = json_decode($row['Visibility'], true);
+                            $permissionLabel = match ($visibility['level'] ?? 'view_add_or_link') {
+                                'view_only' => 'View Only',
+                                'view_and_comment' => 'View and Comment',
+                                'view_add_or_link' => 'View, Add, or Link to Other Contents',
+                                default => 'Unknown',
+                            };
+                            ?>
                             <div class="post" style="position: relative;" onclick="toggleCommentSection(this)">
                                 <h4>Post by <?php echo htmlspecialchars($row['Username']); ?></h4>
-
-                                <!-- Display "Contents and Permissions" button for group owner -->
+                                <!-- "Contents and Permissions" button -->
                                 <?php if ($row['OwnerID'] == $memberID): ?>
                                     <button
                                         style="position: absolute; top: 10px; right: 10px; background-color: #4c87ae; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer;"
-                                        onclick="window.location.href='contents_permissions.php?groupID=<?php echo $row['GroupID']; ?>'">
+                                        onclick="openContentsPermissionsModal(<?php echo $row['PostID']; ?>)">
                                         Contents and Permissions
                                     </button>
                                 <?php endif; ?>
@@ -344,38 +353,47 @@ while ($row = $resultGroupPosts->fetch_assoc()) {
                                 <?php if (!empty($row['PostText'])): ?>
                                     <p><?php echo htmlspecialchars($row['PostText']); ?></p>
                                 <?php endif; ?>
+
                                 <!-- Comments Section -->
                                 <div class="comment-section">
                                     <?php
                                     $post_id = $row['PostID'];
-                                    $comments_result = $conn->query("
-                                SELECT Comment.*, Member.Username 
-                                FROM Comment 
-                                JOIN Member ON Comment.MemberID = Member.MemberID 
-                                WHERE PostID = $post_id 
-                                ORDER BY Comment.CommentedAt ASC
-                            ");
-                                    if ($comments_result->num_rows > 0):
-                                        while ($comment = $comments_result->fetch_assoc()):
-                                            ?>
-                                            <div class="comment">
-                                                <p><strong><?php echo $comment['Username']; ?>:</strong>
-                                                    <?php echo htmlspecialchars($comment['CommentContent']); ?></p>
-                                                <p style="font-size: 0.8em; color: #888;"><?php echo $comment['CommentedAt']; ?></p>
-                                            </div>
-                                            <?php
-                                        endwhile;
-                                    else:
-                                        echo "<p>No comments yet.</p>";
-                                    endif;
-                                    ?>
-                                    <form action="interactions/add_comment.php" method="POST"
-                                        onclick="preventClickPropagation(event)">
-                                        <input type="hidden" name="post_id" value="<?php echo $post_id; ?>">
-                                        <textarea name="comment_content" placeholder="Write a comment..." required
-                                            onclick="preventClickPropagation(event)"></textarea>
-                                        <button type="submit" onclick="preventClickPropagation(event)">Post Comment</button>
-                                    </form>
+                                    $visibility = json_decode($row['Visibility'], true);
+                                    $permissionLevel = $visibility['level'] ?? 'view_add_or_link';
+
+                                    if ($permissionLevel === 'view_only') {
+                                        // Display message for "view-only" posts
+                                        echo "<p style='color: red; font-weight: bold;'>This post is view-only. Comments are disabled.</p>";
+                                    } else {
+                                        // Fetch and display comments
+                                        $comments_result = $conn->query("
+            SELECT Comment.*, Member.Username 
+            FROM Comment 
+            JOIN Member ON Comment.MemberID = Member.MemberID 
+            WHERE PostID = $post_id 
+            ORDER BY Comment.CommentedAt ASC
+        ");
+
+                                        if ($comments_result->num_rows > 0) {
+                                            while ($comment = $comments_result->fetch_assoc()) {
+                                                echo "<div class='comment'>";
+                                                echo "<p><strong>" . htmlspecialchars($comment['Username']) . ":</strong> " . htmlspecialchars($comment['CommentContent']) . "</p>";
+                                                echo "<p style='font-size: 0.8em; color: #888;'>" . $comment['CommentedAt'] . "</p>";
+                                                echo "</div>";
+                                            }
+                                        } else {
+                                            echo "<p>No comments yet.</p>";
+                                        }
+                                        ?>
+                                        <!-- Display comment form if not "view-only" -->
+                                        <form action="interactions/add_comment.php" method="POST"
+                                            onclick="preventClickPropagation(event)">
+                                            <input type="hidden" name="post_id" value="<?php echo $post_id; ?>">
+                                            <textarea name="comment_content" placeholder="Write a comment..." required
+                                                onclick="preventClickPropagation(event)"></textarea>
+                                            <button type="submit" onclick="preventClickPropagation(event)">Post Comment</button>
+                                        </form>
+                                    <?php } ?>
                                 </div>
                             </div>
                         <?php endforeach; ?>
@@ -385,6 +403,35 @@ while ($row = $resultGroupPosts->fetch_assoc()) {
                 <p>No posts to display.</p>
             <?php endif; ?>
         </section>
+
+        <!-- Modal Structure -->
+        <div id="contentsPermissionsModal"
+            style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;">
+            <div
+                style="background: white; padding: 20px; border-radius: 8px; max-width: 500px; width: 90%; position: relative;">
+                <button
+                    style="position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 24px; font-weight: bold; color: black; cursor: pointer;"
+                    onclick="closeContentsPermissionsModal()">×</button>
+                <h3>Set Permissions for Post</h3>
+                <div id="modalContent">
+                    <form id="setPermissionsForm" onsubmit="submitPermissions(event)">
+                        <input type="hidden" id="modalPostID" name="postID">
+                        <div style="margin-bottom: 10px;">
+                            <label for="permissionLevel">Choose Permission Level:</label>
+                            <select id="permissionLevel" name="permissionLevel" style="width: 100%; padding: 8px;">
+                                <option value="view_only">View Only</option>
+                                <option value="view_and_comment">View and Comment</option>
+                                <option value="view_add_or_link">View, Add, or Link to Other Contents</option>
+                            </select>
+                        </div>
+                        <div style="text-align: right;">
+                            <button type="submit"
+                                style="background-color: #4c87ae; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
 
     </div>
 
@@ -412,6 +459,53 @@ while ($row = $resultGroupPosts->fetch_assoc()) {
             const banner = document.querySelector('.success-banner');
             if (banner) banner.style.display = 'none';
         }, 1000);
+
+
+        function openContentsPermissionsModal(postID) {
+            const modal = document.getElementById('contentsPermissionsModal');
+            const modalPostID = document.getElementById('modalPostID'); // Hidden input for postID
+            const modalContent = document.getElementById('modalContent'); // Modal content area
+
+            modal.style.display = 'flex'; // Show modal
+            modalPostID.value = postID; // Set the postID for the form
+            modalContent.innerHTML = '<p>Loading...</p>'; // Show loading message
+
+            // Fetch the visibility form from contents_permissions.php
+            fetch(`contents_permissions.php?postID=${postID}`)
+                .then(response => response.text())
+                .then(data => {
+                    modalContent.innerHTML = data; // Populate modal with form
+                })
+                .catch(err => {
+                    modalContent.innerHTML = '<p>Error loading permissions. Please try again.</p>';
+                });
+        }
+
+
+        function closeContentsPermissionsModal() {
+            const modal = document.getElementById('contentsPermissionsModal');
+            modal.style.display = 'none';
+        }
+
+        function submitPermissions(event) {
+            event.preventDefault();
+
+            const formData = new FormData(document.getElementById('setPermissionsForm'));
+
+            fetch('save_permissions.php', {
+                method: 'POST',
+                body: formData,
+            })
+                .then(response => response.text())
+                .then(data => {
+                    alert(data); // Display success or error message
+                    closeContentsPermissionsModal();
+                    location.reload(); // Reload page to reflect changes
+                })
+                .catch(err => {
+                    alert('An error occurred. Please try again.');
+                });
+        }
     </script>
 </body>
 

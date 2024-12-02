@@ -151,6 +151,53 @@ $stmt->close();
         .hidden {
             display: none;
         }
+        #groupDetailsModal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
+
+    #groupDetailsModal div {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        max-width: 500px;
+        width: 90%;
+        position: relative;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    #groupDetailsModal .close-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    font-weight: bold;
+    color: black;
+    cursor: pointer;
+}
+    #groupDetailsModal h2 {
+        margin-top: 0;
+    }
+    #groupDetailsContent ul {
+    max-height: 200px; /* Set the maximum height */
+    overflow-y: auto; /* Enable vertical scrolling */
+    padding: 10px;
+    border: 1px solid #ddd; /* Optional: Add a border for better visibility */
+    margin: 10px 0;
+    background-color: #f9f9f9; /* Optional: Add a subtle background color */
+    border-radius: 4px;
+}
+
     </style>
     <script>
         function toggleCreateGroupForm() {
@@ -295,6 +342,49 @@ function leaveGroup(groupId, buttonElement) {
         xhr.send(`groupId=${groupId}`);
     }
 }
+function viewGroupDetails(groupId) {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "group_details.php", true);
+    xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4 && xhr.status === 200) {
+            const modal = document.getElementById("groupDetailsModal");
+            const content = document.getElementById("groupDetailsContent");
+            content.innerHTML = xhr.responseText;
+            modal.style.display = "flex"; // Show modal
+        }
+    };
+
+    xhr.send(`groupId=${groupId}`);
+}
+
+function closeGroupDetails() {
+    const modal = document.getElementById("groupDetailsModal");
+    modal.style.display = "none"; // Hide modal
+}
+
+function removeMember(groupMemberID, buttonElement) {
+    if (confirm("Are you sure you want to remove this member?")) {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "remove_member.php", true);
+        xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                if (xhr.responseText.trim() === "success") {
+                    // Remove the member's list item from the DOM
+                    const liElement = buttonElement.parentElement;
+                    liElement.remove();
+                } else {
+                    alert("Failed to remove member: " + xhr.responseText);
+                }
+            }
+        };
+
+        xhr.send(`groupMemberID=${groupMemberID}`);
+    }
+}
 
     </script>
 
@@ -355,8 +445,11 @@ function leaveGroup(groupId, buttonElement) {
             if (!$isOwner) {
                 // Show Leave Group button for members who are not the owner
                 echo "<button onclick=\"leaveGroup($groupId, this)\">Leave Group</button>";
+                echo "<button onclick=\"viewGroupDetails($groupId)\">Details</button>";
+
             } else {
             echo "<div>";
+            echo "<button onclick=\"viewGroupDetails($groupId)\">Details</button>";
             echo "<button onclick=\"toggleEditGroupForm($groupId, '$groupName')\">Edit</button>";
             echo "<button class='btn-danger' onclick=\"deleteGroup($groupId)\">Delete</button>";
             echo "</div>";
@@ -432,7 +525,19 @@ function leaveGroup(groupId, buttonElement) {
         $stmt->close();
         ?>
     </ul>
+    
 </section>
+<div id="groupDetailsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 20px; border-radius: 8px; max-width: 500px; width: 90%; position: relative; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+        <button onclick="closeGroupDetails()" style="position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 24px; font-weight: bold; color: black; cursor: pointer;">×</button>
+        <h2>Group Details</h2>
+        <div id="groupDetailsContent">
+            <!-- Group details will be loaded dynamically here -->
+        </div>
+    </div>
+</div>
+
+
 
     </main>
 </body>

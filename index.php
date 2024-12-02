@@ -173,10 +173,10 @@ session_start();
             </button>
         </a>
         <?php
-        echo '<a href="Events/create_social_event.php"><button><h3>Create Social Event</h3></button></a>';
-        echo '<a href="GiftExchange/create_gift_exchange.php"><button><h3>Create Gift Exchange</h3></button></a>';
+        echo '<a style="margin-left: 1%" href="Events/create_social_event.php"><button><h3>Create Social Event</h3></button></a>';
+        echo '<a style="margin-left: 1%" href="GiftExchange/create_gift_exchange.php"><button><h3>Create Gift Exchange</h3></button></a>';
         if (isset($_SESSION['username'])) {
-            echo '<a href="profile.php"><button><h3>Profile</h3></button></a>';
+            echo '<a style="margin-left: 1%" href="profile.php"><button><h3>Profile</h3></button></a>';
         } else {
             echo '<a href="account_setup.php"><button><h3>Log In or Sign Up</h3></button></a>';
         }

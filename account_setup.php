@@ -23,62 +23,111 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['form_type']) && $_POST
     $profession = !empty($_POST['profession']) ? trim($_POST['profession']) : null;
     $businessAccount = isset($_POST['businessAccount']) ? 1 : 0;
 
-    // Validate required fields and matching passwords
-    if (empty($username) || empty($password) || empty($confirmPassword) || empty($firstName) || empty($lastName) || empty($email)) {
-        $errors[] = "All required fields must be filled out.";
+    // Reference fields
+    $referenceUsername = trim($_POST['referenceUsername']);
+    $referenceID = trim($_POST['referenceID']);
+
+    // Validate required fields
+    if (empty($username)) {
+        $errors[] = "Username is required.";
     }
 
+    if (empty($password)) {
+        $errors[] = "Password is required.";
+    }
+
+    if (empty($confirmPassword)) {
+        $errors[] = "Confirm password is required.";
+    }
+
+    if (empty($firstName)) {
+        $errors[] = "First name is required.";
+    }
+
+    if (empty($lastName)) {
+        $errors[] = "Last name is required.";
+    }
+
+    if (empty($email)) {
+        $errors[] = "Email is required.";
+    }
+
+    if (empty($referenceUsername)) {
+        $errors[] = "Reference username is required.";
+    }
+
+    if (empty($referenceID)) {
+        $errors[] = "Reference ID is required.";
+    }
+
+    // Validate passwords
     if ($password !== $confirmPassword) {
-        $errors[] = "Passwords do not match.";
+        $errors[] = "Passwords don't match.";
     }
 
     // Validate email format
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $errors[] = "Please enter a valid email address.";
     }
 
     // Validate date of birth
     if (!empty($dateOfBirth)) {
         $dateParts = explode('-', $dateOfBirth);
-
-        // Validate format and check if it's a valid date
         if (
-            count($dateParts) === 3 &&
-            is_numeric($dateParts[0]) &&
-            is_numeric($dateParts[1]) &&
-            is_numeric($dateParts[2]) &&
-            checkdate((int)$dateParts[1], (int)$dateParts[2], (int)$dateParts[0])
+            count($dateParts) !== 3 ||
+            !is_numeric($dateParts[0]) ||
+            !is_numeric($dateParts[1]) ||
+            !is_numeric($dateParts[2]) ||
+            !checkdate((int)$dateParts[1], (int)$dateParts[2], (int)$dateParts[0])
         ) {
-            // Valid date
-        } else {
             $errors[] = "Invalid date format or date does not exist. Please enter a valid date (YYYY-MM-DD).";
         }
     } else {
         $dateOfBirth = null; // Allow null if the field is empty
     }
 
-    // Check for duplicate username or email before inserting into database
+    // Check for username existence (ensure it is not already used)
     if (empty($errors)) {
-        // Use case-insensitive comparison
-        $stmt = $conn->prepare("SELECT Username, Email FROM Member WHERE LOWER(Username) = LOWER(?) OR LOWER(Email) = LOWER(?)");
+        $stmt = $conn->prepare("SELECT MemberID FROM Member WHERE LOWER(Username) = LOWER(?)");
         if ($stmt) {
-            $stmt->bind_param("ss", $username, $email);
+            $stmt->bind_param("s", $username);
             $stmt->execute();
             $stmt->store_result();
             if ($stmt->num_rows > 0) {
-                $stmt->bind_result($existingUsername, $existingEmail);
-                while ($stmt->fetch()) {
-                    if (strcasecmp($existingUsername, $username) === 0) { // Case-insensitive comparison
-                        $errors[] = "Username already exists.";
-                    }
-                    if (strcasecmp($existingEmail, $email) === 0) { // Case-insensitive comparison
-                        $errors[] = "Email already exists.";
-                    }
-                }
+                $errors[] = "The username is already in use. Please choose a different username.";
             }
             $stmt->close();
         } else {
-            $errors[] = "Database error: Unable to prepare statement.";
+            $errors[] = "Database error: Unable to check username.";
+        }
+    }
+
+    // Check reference username and ID
+    if (empty($errors)) {
+        $stmt = $conn->prepare("SELECT MemberID, Privilege FROM Member WHERE LOWER(Username) = LOWER(?)");
+        if ($stmt) {
+            $stmt->bind_param("s", $referenceUsername);
+            $stmt->execute();
+            $stmt->store_result();
+            if ($stmt->num_rows > 0) {
+                $stmt->bind_result($refMemberID, $refPrivilege);
+                $stmt->fetch();
+
+                // Check if reference ID matches reference username
+                if ($referenceID != $refMemberID) {
+                    $errors[] = "Reference ID does not match the provided reference username.";
+                }
+
+                // Check if reference user is a junior
+                if ($refPrivilege === 'Junior') {
+                    $errors[] = "The reference user is restricted (Junior privilege).";
+                }
+            } else {
+                $errors[] = "Reference username does not exist.";
+            }
+            $stmt->close();
+        } else {
+            $errors[] = "Database error: Unable to check reference username.";
         }
     }
 
@@ -86,10 +135,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['form_type']) && $_POST
     if (!empty($errors)) {
         $activeForm = 'signup';
     } else {
-        // If no errors, proceed to insert data
-        // **Password is stored in plain text** *(Not Recommended)*
-        $plainPassword = $password;
-
         // Default privilege and status
         $privilege = 'Junior';
         $status = 'Active';
@@ -102,7 +147,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['form_type']) && $_POST
             $stmt->bind_param(
                 "sssssssssssi",
                 $username,
-                $plainPassword,
+                $password,
                 $firstName,
                 $lastName,
                 $email,
@@ -117,7 +162,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['form_type']) && $_POST
 
             // Execute the statement and check if successful
             if ($stmt->execute()) {
-                // Registration successful, redirect to profile page
+                // Registration successful, store session and redirect to profile page
+                $_SESSION['username'] = $username;
+                $_SESSION['memberid'] = $conn->insert_id; // Get the inserted member ID
                 header("Location: profile.php");
                 exit();
             } else {
@@ -125,7 +172,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['form_type']) && $_POST
                 $activeForm = 'signup';
             }
 
-            // Close the statement
             $stmt->close();
         } else {
             $errors[] = "Database error: Unable to prepare insert statement.";
@@ -137,6 +183,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['form_type']) && $_POST
 // Close the database connection
 $conn->close();
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -211,6 +258,7 @@ $conn->close();
             padding: 30px 20px;
             text-align: center;
             margin-top: 50px;
+            margin-bottom: 50px;
         }
 
         h1 {
@@ -414,6 +462,13 @@ $conn->close();
 
             <label for="signup-email">Email<span class="required">*</span></label>
             <input type="email" id="signup-email" name="email" value="<?php echo isset($email) ? htmlspecialchars($email, ENT_QUOTES, 'UTF-8') : ''; ?>" required>
+
+            <label for="reference-username">Reference Username<span class="required">*</span></label>
+            <input type="text" id="reference-username" name="referenceUsername" required>
+
+            <label for="reference-id">Reference ID<span class="required">*</span></label>
+            <input type="text" id="reference-id" name="referenceID" required>
+
 
             <label for="dateOfBirth">Date of Birth</label>
             <div class="date-container">

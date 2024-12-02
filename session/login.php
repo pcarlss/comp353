@@ -38,12 +38,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 // Set session variables
                 $_SESSION['username'] = $username;
 
+                // Fetch and set MemberID
                 $stmt = $conn->prepare("SELECT memberid FROM Member WHERE username = ?");
                 $stmt->bind_param("s", $username);
                 $stmt->execute();
-                $memberid = $stmt->get_result();
-
-                $_SESSION['memberid'] = $memberid;
+                $stmt->bind_result($memberid);
+                $stmt->fetch();
+                $_SESSION['MemberID'] = $memberid; // Correctly store the MemberID in the session
+                $stmt->close();
 
                 // Redirect to profile.php upon successful login
                 header("Location: ../profile.php");

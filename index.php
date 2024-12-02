@@ -1,6 +1,48 @@
 <?php
 require 'session/db_connect.php';
 session_start();
+
+if (!isset($_SESSION['MemberID'])) {
+    header("Location: account_setup.php");
+    exit();
+}
+
+$memberID = $_SESSION['MemberID'];
+
+// Fetch "My Posts"
+$stmtMyPosts = $conn->prepare("
+    SELECT Post.*, Member.Username 
+    FROM Post 
+    JOIN Member ON Post.MemberID = Member.MemberID 
+    WHERE Post.MemberID = ? 
+    ORDER BY Post.PostedAt DESC
+");
+$stmtMyPosts->bind_param("i", $memberID);
+$stmtMyPosts->execute();
+$resultMyPosts = $stmtMyPosts->get_result();
+$stmtMyPosts->close();
+
+// Fetch "Posts In My Groups"
+$stmtGroupPosts = $conn->prepare("
+    SELECT Post.*, Member.Username 
+    FROM Post
+    JOIN Member ON Post.MemberID = Member.MemberID
+    WHERE Post.MemberID IN (
+        SELECT gm.MemberID
+        FROM GroupMember gm
+        WHERE gm.GroupID IN (
+            SELECT GroupID 
+            FROM GroupMember 
+            WHERE MemberID = ?
+        )
+        AND gm.MemberID != ?
+    )
+    ORDER BY Post.PostedAt DESC
+");
+$stmtGroupPosts->bind_param("ii", $memberID, $memberID);
+$stmtGroupPosts->execute();
+$resultGroupPosts = $stmtGroupPosts->get_result();
+$stmtGroupPosts->close();
 ?>
 
 <!DOCTYPE html>
@@ -213,48 +255,104 @@ session_start();
 
     <!-- Posts and Comments -->
     <div class="container">
-        <?php
-        $result = $conn->query("SELECT Post.*, Member.username FROM Post JOIN Member ON Post.memberid = Member.memberid ORDER BY Post.PostedAt DESC");
 
-        if ($result->num_rows > 0) {
-            while ($row = $result->fetch_assoc()) {
-                echo '<div class="post" onclick="toggleCommentSection(this)">';
-                echo '<h3>Post by ' . $row['username'] . '</h3>';
+<!-- My Posts Section -->
+<section>
+    <h2>My Posts</h2>
+    <?php if ($resultMyPosts->num_rows > 0): ?>
+        <?php while ($row = $resultMyPosts->fetch_assoc()): ?>
+            <div class="post" onclick="toggleCommentSection(this)">
+                <h3>Post by You</h3>
+                <?php if (!empty($row['PostText'])): ?>
+                    <p><?php echo htmlspecialchars($row['PostText']); ?></p>
+                <?php endif; ?>
+                <!-- Comments Section -->
+                <div class="comment-section">
+                    <?php
+                    $post_id = $row['PostID'];
+                    $comments_result = $conn->query("
+                        SELECT Comment.*, Member.Username 
+                        FROM Comment 
+                        JOIN Member ON Comment.MemberID = Member.MemberID 
+                        WHERE PostID = $post_id 
+                        ORDER BY Comment.CommentedAt ASC
+                    ");
+                    if ($comments_result->num_rows > 0):
+                        while ($comment = $comments_result->fetch_assoc()):
+                    ?>
+                            <div class="comment">
+                                <p><strong><?php echo $comment['Username']; ?>:</strong> 
+                                   <?php echo htmlspecialchars($comment['CommentContent']); ?></p>
+                                <p style="font-size: 0.8em; color: #888;"><?php echo $comment['CommentedAt']; ?></p>
+                            </div>
+                    <?php
+                        endwhile;
+                    else:
+                        echo "<p>No comments yet.</p>";
+                    endif;
+                    ?>
+                    <form action="interactions/add_comment.php" method="POST" onclick="preventClickPropagation(event)">
+                        <input type="hidden" name="post_id" value="<?php echo $post_id; ?>">
+                        <textarea name="comment_content" placeholder="Write a comment..." required onclick="preventClickPropagation(event)"></textarea>
+                        <button type="submit" onclick="preventClickPropagation(event)">Post Comment</button>
+                    </form>
+                </div>
+            </div>
+        <?php endwhile; ?>
+    <?php else: ?>
+        <p>No posts to display.</p>
+    <?php endif; ?>
+</section>
 
-                if (!empty($row['PostText'])) {
-                    echo '<p>' . htmlspecialchars($row['PostText']) . '</p>';
-                }
+<!-- Posts In My Groups Section -->
+<section>
+    <h2>Posts In My Groups</h2>
+    <?php if ($resultGroupPosts->num_rows > 0): ?>
+        <?php while ($row = $resultGroupPosts->fetch_assoc()): ?>
+            <div class="post" onclick="toggleCommentSection(this)">
+                <h3>Post by <?php echo $row['Username']; ?></h3>
+                <?php if (!empty($row['PostText'])): ?>
+                    <p><?php echo htmlspecialchars($row['PostText']); ?></p>
+                <?php endif; ?>
+                <!-- Comments Section -->
+                <div class="comment-section">
+                    <?php
+                    $post_id = $row['PostID'];
+                    $comments_result = $conn->query("
+                        SELECT Comment.*, Member.Username 
+                        FROM Comment 
+                        JOIN Member ON Comment.MemberID = Member.MemberID 
+                        WHERE PostID = $post_id 
+                        ORDER BY Comment.CommentedAt ASC
+                    ");
+                    if ($comments_result->num_rows > 0):
+                        while ($comment = $comments_result->fetch_assoc()):
+                    ?>
+                            <div class="comment">
+                                <p><strong><?php echo $comment['Username']; ?>:</strong> 
+                                   <?php echo htmlspecialchars($comment['CommentContent']); ?></p>
+                                <p style="font-size: 0.8em; color: #888;"><?php echo $comment['CommentedAt']; ?></p>
+                            </div>
+                    <?php
+                        endwhile;
+                    else:
+                        echo "<p>No comments yet.</p>";
+                    endif;
+                    ?>
+                    <form action="interactions/add_comment.php" method="POST" onclick="preventClickPropagation(event)">
+                        <input type="hidden" name="post_id" value="<?php echo $post_id; ?>">
+                        <textarea name="comment_content" placeholder="Write a comment..." required onclick="preventClickPropagation(event)"></textarea>
+                        <button type="submit" onclick="preventClickPropagation(event)">Post Comment</button>
+                    </form>
+                </div>
+            </div>
+        <?php endwhile; ?>
+    <?php else: ?>
+        <p>No posts to display.</p>
+    <?php endif; ?>
+</section>
 
-                $post_id = $row['PostID'];
-                $comments_result = $conn->query("SELECT Comment.*, Member.username FROM Comment JOIN Member ON Comment.memberid = Member.memberid WHERE PostID = $post_id ORDER BY Comment.CommentedAt ASC");
-
-                echo '<div class="comment-section">';
-                if ($comments_result->num_rows > 0) {
-                    while ($comment = $comments_result->fetch_assoc()) {
-                        echo '<div class="comment">';
-                        echo '<p><strong>' . $comment['username'] . ':</strong> ' . htmlspecialchars($comment['CommentContent']) . '</p>';
-                        echo '<p style="font-size: 0.8em; color: #888;">' . $comment['CommentedAt'] . '</p>';
-                        echo '</div>';
-                    }
-                } else {
-                    echo '<p>No comments yet.</p>';
-                }
-
-                echo '<form action="interactions/add_comment.php" method="POST" onclick="preventClickPropagation(event)">';
-                echo '<input type="hidden" name="post_id" value="' . $post_id . '">';
-                echo '<textarea name="comment_content" placeholder="Write a comment..." required onclick="preventClickPropagation(event)"></textarea>';
-                echo '<button type="submit" onclick="preventClickPropagation(event)">Post Comment</button>';
-                echo '</form>';
-                echo '</div>'; // End of comment section
-                echo '</div>'; // End of post
-            }
-        } else {
-            echo "<p>No posts available.</p>";
-        }
-
-        $conn->close();
-        ?>
-    </div>
+</div>
 
     <script>
         function toggleCommentSection(postElement) {

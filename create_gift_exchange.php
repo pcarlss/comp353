@@ -219,7 +219,10 @@ session_start();
 
             if (!empty($row['GiftExchangeDesc'])) {
                 echo '<p>Description:<br>' . htmlspecialchars($row['GiftExchangeDesc']) . '</p><br>';
-                echo '<p>Date/Place:<br>' . htmlspecialchars($row['GiftExchangeDesc']) . '</p><br>';
+            }
+
+            if (!empty($row['GiftExchangeDate'])) {
+                echo '<p>Date/Place:<br>' . htmlspecialchars($row['GiftExchangeDate']) . '</p><br>';
             }
 
             $giftexchange_id = $row['GiftExchangeID'];

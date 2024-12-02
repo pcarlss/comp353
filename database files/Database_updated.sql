@@ -73,7 +73,8 @@ CREATE TABLE `Event` (
   `EventDesc` varchar(50) NOT NULL,
   `EventCreatorID` int(50) NOT NULL,
   `EventGroupID` int(50) NOT NULL,
-  `EventPostedAt` datetime NOT NULL DEFAULT NOW()
+  `EventPostedAt` datetime NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (`EventID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -86,7 +87,8 @@ CREATE TABLE `EventOptions` (
   `OptionID` int(50) NOT NULL AUTO_INCREMENT,
   `EventID` int(50) NOT NULL,
   `Date_Time_Location` varchar(50) NOT NULL,
-  `Votes` int(50) NOT NULL DEFAULT 0
+  `Votes` int(50) NOT NULL DEFAULT 0,
+  PRIMARY KEY (`OptionID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------

@@ -182,6 +182,22 @@ $conn->close();
             font-size: 1.5em;
         }
 
+        .info-button {
+    background-color: #17a2b8; /* Bootstrap's 'info' color */
+    color: white;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.8em;
+    transition: background-color 0.3s;
+}
+
+.info-button:hover {
+    background-color: #138496; /* Darker shade for hover effect */
+}
+
+
         .top-bar button {
             background-color: #fff;
             color: #4c87ae;
@@ -470,25 +486,32 @@ $conn->close();
             <h2>Your Friends</h2>
             <?php if (!empty($friends)): ?>
                 <ul>
-                    <?php foreach ($friends as $friend): ?>
-                        <li id="friend-<?php echo htmlspecialchars($friend['MemberID']); ?>">
-                            <div class="user-info">
-                                <img src="<?php echo getProfilePic($friend['profilePic']); ?>" alt="Profile Picture of <?php echo htmlspecialchars($friend['Username']); ?>">
-                                <span><?php echo htmlspecialchars($friend['Username']); ?> (<?php echo htmlspecialchars($friend['RelationshipType']); ?>)</span>
-                            </div>
-                            <div class="actions">
-                                <form action="message.php" method="get">
-                                    <input type="hidden" name="userID" value="<?php echo htmlspecialchars($memberID); ?>">
-                                    <input type="hidden" name="friendID" value="<?php echo htmlspecialchars($friend['MemberID']); ?>">
-                                    <button class="message-button" type="submit">Message</button>
-                                </form>
-                                <form method="post" onsubmit="return confirm('Are you sure you want to remove this friend?');">
-                                    <input type="hidden" name="removeFriendID" value="<?php echo htmlspecialchars($friend['MemberID']); ?>">
-                                    <button class="remove-button" type="submit">Remove</button>
-                                </form>
-                            </div>
-                        </li>
-                    <?php endforeach; ?>
+                <?php foreach ($friends as $friend): ?>
+    <li id="friend-<?php echo htmlspecialchars($friend['MemberID']); ?>">
+        <div class="user-info">
+            <img src="<?php echo getProfilePic($friend['profilePic']); ?>" alt="Profile Picture of <?php echo htmlspecialchars($friend['Username']); ?>">
+            <span><?php echo htmlspecialchars($friend['Username']); ?> (<?php echo htmlspecialchars($friend['RelationshipType']); ?>)</span>
+        </div>
+        <div class="actions">
+            <form action="message.php" method="get">
+                <input type="hidden" name="userID" value="<?php echo htmlspecialchars($memberID); ?>">
+                <input type="hidden" name="friendID" value="<?php echo htmlspecialchars($friend['MemberID']); ?>">
+                <button class="message-button" type="submit">Message</button>
+            </form>
+            <form action="info.php" method="get" onsubmit="console.log('Sending friendID:', this.friendID.value);">
+    <input type="hidden" name="friendID" value="<?php echo htmlspecialchars($friend['MemberID']); ?>">
+    <button class="info-button" type="submit">Info</button>
+</form>
+
+            <form method="post" onsubmit="return confirm('Are you sure you want to remove this friend?');">
+                <input type="hidden" name="removeFriendID" value="<?php echo htmlspecialchars($friend['MemberID']); ?>">
+                <button class="remove-button" type="submit">Remove</button>
+            </form>
+        </div>
+    </li>
+<?php endforeach; ?>
+
+
                 </ul>
             <?php else: ?>
                 <p class="empty-list">You have no friends in your list.</p>

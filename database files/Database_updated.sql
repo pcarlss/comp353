@@ -50,6 +50,22 @@ CREATE TABLE `Blocked` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `Privacy`
+--
+
+CREATE TABLE `Privacy` (
+  `PrivacyID` int(50) NOT NULL,
+  `Fname` tinyint(1) NOT NULL DEFAULT 0,
+  `Lname` tinyint(1) NOT NULL DEFAULT 0,
+  `BirthDate` tinyint(1) NOT NULL DEFAULT 0,
+  `pCity` tinyint(1) NOT NULL DEFAULT 0,
+  `pCountry` tinyint(1) NOT NULL DEFAULT 0,
+  `Work` tinyint(1) NOT NULL DEFAULT 0,
+  `pStatus` tinyint(1) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `Comment`
 --
 
@@ -175,6 +191,19 @@ CREATE TABLE `Member` (
 --
 INSERT INTO `Member` (`MemberID`, `Username`, `Password`, `FirstName`, `LastName`, `DateOfBirth`, `City`, `Country`, `Email`, `Profession`, `Privilege`, `Status`, `BusinessAccount`, `UserCreatedAt`, `UserUpdatedAt`) VALUES
 (1, 'testuser', 'testpassword', 'Test', 'User', NULL, NULL, NULL, 'testuser@example.com', NULL, 'Junior', 'Active', 0, '2024-11-06', '2024-11-06');
+
+--
+-- Triggers `Member`
+--
+DELIMITER $$
+CREATE TRIGGER `after_member_insert` AFTER INSERT ON `Member` FOR EACH ROW BEGIN
+    INSERT INTO Privacy (PrivacyID) VALUES (NEW.MemberID);
+END
+$$
+DELIMITER ;
+
+
+
 --
 -- Indexes for table `Member`
 --
@@ -295,6 +324,12 @@ ALTER TABLE `Blocked`
   ADD PRIMARY KEY (`BlockedID`),
   ADD KEY `MemberID1` (`MemberID1`),
   ADD KEY `MemberID2` (`MemberID2`);
+
+--
+-- Indexes for table `Privacy`
+--
+ALTER TABLE `Privacy`
+  ADD PRIMARY KEY (`PrivacyID`);
 
 --
 -- Indexes for table `Comment`
@@ -424,6 +459,12 @@ ALTER TABLE `Friendship`
   MODIFY `FriendshipID` int(50) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `Privacy`
+--
+ALTER TABLE `Privacy`
+  MODIFY `PrivacyID` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `GiftExchange`
 --
 ALTER TABLE `GiftExchange`
@@ -482,6 +523,13 @@ ALTER TABLE `AccessControl`
 ALTER TABLE `Blocked`
   ADD CONSTRAINT `blocked_ibfk_1` FOREIGN KEY (`MemberID1`) REFERENCES `Member` (`MemberID`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `blocked_ibfk_2` FOREIGN KEY (`MemberID2`) REFERENCES `Member` (`MemberID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `Privacy`
+--
+ALTER TABLE `Privacy`
+  ADD CONSTRAINT `privacy_ibfk_1` FOREIGN KEY (`PrivacyID`) REFERENCES `Member` (`MemberID`) ON DELETE CASCADE ON UPDATE CASCADE;
+COMMIT;
 
 --
 -- Constraints for table `Comment`

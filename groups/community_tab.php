@@ -385,7 +385,78 @@ function removeMember(groupMemberID, buttonElement) {
         xhr.send(`groupMemberID=${groupMemberID}`);
     }
 }
+function showAddMemberForm(groupId) {
+    closeGroupDetails();
 
+        const formHtml = `
+            <div id="addMemberModal" style="display: flex; justify-content: center; align-items: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5);">
+                <div style="background: white; padding: 20px; border-radius: 8px; max-width: 400px; width: 90%; position: relative;">
+                    <button onclick="closeAddMemberForm()" style="position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 24px; font-weight: bold; color: black; cursor: pointer;">×</button>
+                    <h2>Add Member</h2>
+                    <form id="addMemberForm">
+                        <input type="hidden" name="groupId" value="${groupId}">
+                        <div>
+                            <label for="email">Email:</label>
+                            <input type="email" id="email" name="email" required>
+                        </div>
+                        <div>
+                            <label for="firstName">First Name:</label>
+                            <input type="text" id="firstName" name="firstName" required>
+                        </div>
+                        <div>
+                            <label for="dob">Date of Birth:</label>
+                            <input type="date" id="dob" name="dob" required>
+                        </div>
+                        <button type="submit">Add Member</button>
+                    </form>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', formHtml);
+
+        const form = document.getElementById("addMemberForm");
+        form.addEventListener("submit", function (e) {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "add_member.php", true);
+            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+
+            xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+                const response = xhr.responseText.trim();
+                if (response === "success") {
+                    // Close the Add Member modal
+                    closeAddMemberForm();
+
+                    // Refresh the group details dynamically
+                    const groupId = formData.get("groupId");
+                    viewGroupDetails(groupId);
+                } else {
+                    alert(response); // Display error message
+                }
+            } else {
+                alert("An error occurred while processing the request.");
+            }
+        }
+    };
+
+            const params = new URLSearchParams();
+            for (const [key, value] of formData.entries()) {
+                params.append(key, value);
+            }
+            params.append("action", "add_member");
+
+            xhr.send(params.toString());
+        });
+    }
+
+    function closeAddMemberForm() {
+        const modal = document.getElementById("addMemberModal");
+        if (modal) modal.remove();
+    }
     </script>
 
 </head>
@@ -446,6 +517,7 @@ function removeMember(groupMemberID, buttonElement) {
                 // Show Leave Group button for members who are not the owner
                 echo "<button onclick=\"leaveGroup($groupId, this)\">Leave Group</button>";
                 echo "<button onclick=\"viewGroupDetails($groupId)\">Details</button>";
+                
 
             } else {
             echo "<div>";

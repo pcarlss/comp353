@@ -69,6 +69,9 @@ echo "<p>Owner: $ownerUsername</p>";
 
 
 echo "<h4>Members:</h4>";
+if ($isOwner) {
+    echo "<button onclick=\"showAddMemberForm($groupID)\" style='margin-bottom: 5px; background-color: #4c87ae; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;'>Add Members</button>";
+}
 
 if (count($members) > 0) {
     echo "<ul style='max-height: 200px; overflow-y: auto; padding: 0; margin: 0; list-style-type: none;'>"; // Enable scrolling

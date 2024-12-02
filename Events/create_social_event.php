@@ -169,7 +169,7 @@ session_start();
     <a href="/comp353/index.php" style="text-decoration: none; color: white; font-size: 1.2rem; font-weight: bold;">
         Home
     </a>
-    <a href="groups/community_tab.php" style="margin-left: 70%">
+    <a href="../groups/community_tab.php" style="margin-left: 70%">
         <button>
             <h3>Join a Community</h3>
         </button>

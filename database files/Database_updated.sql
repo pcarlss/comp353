@@ -140,7 +140,7 @@ CREATE TABLE `Gift` (
 CREATE TABLE `GiftExchange` (
   `GiftExchangeID` int(50) NOT NULL AUTO_INCREMENT,
   `MemberID` int(50) NOT NULL,               -- Member who created the gift exchange
-  -- `GiftExchangeGroupID` int(50) NOT NULL,
+  `GiftGroupID` int(50) NOT NULL,            -- Uncommented this line
   `GiftExchangeName` varchar(50) NOT NULL,
   `GiftExchangeDesc` varchar(50) NOT NULL,
   `GiftExchangeDate` varchar(50) NOT NULL,
@@ -150,6 +150,38 @@ CREATE TABLE `GiftExchange` (
 
 -- --------------------------------------------------------
 
+--
+-- Table structure for table `Member`
+--
+CREATE TABLE `Member` (
+  `MemberID` int(50) NOT NULL,
+  `Username` varchar(50) NOT NULL,
+  `Password` varchar(50) NOT NULL,
+  `FirstName` varchar(50) NOT NULL,
+  `LastName` varchar(50) NOT NULL,
+  `DateOfBirth` date DEFAULT NULL,
+  `City` varchar(50) DEFAULT NULL,
+  `Country` varchar(50) DEFAULT NULL,
+  `Email` varchar(50) NOT NULL,
+  `Profession` varchar(50) DEFAULT NULL,
+  `Privilege` enum('Administrator','Senior','Junior') NOT NULL,
+  `Status` enum('Active','Inactive','Suspended') NOT NULL,
+  `BusinessAccount` tinyint(1) DEFAULT NULL,
+  `UserCreatedAt` date NOT NULL,
+  `UserUpdatedAt` date NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+--
+-- Dumping data for table `Member`
+--
+INSERT INTO `Member` (`MemberID`, `Username`, `Password`, `FirstName`, `LastName`, `DateOfBirth`, `City`, `Country`, `Email`, `Profession`, `Privilege`, `Status`, `BusinessAccount`, `UserCreatedAt`, `UserUpdatedAt`) VALUES
+(1, 'testuser', 'testpassword', 'Test', 'User', NULL, NULL, NULL, 'testuser@example.com', NULL, 'Junior', 'Active', 0, '2024-11-06', '2024-11-06');
+--
+-- Indexes for table `Member`
+--
+ALTER TABLE `Member`
+  ADD PRIMARY KEY (`MemberID`),
+  ADD UNIQUE KEY `UniqueEmail` (`Email`),
+  ADD UNIQUE KEY `UniqueUsername` (`Username`) USING BTREE;
 --
 -- Table structure for table `GroupList`
 --
@@ -162,6 +194,12 @@ CREATE TABLE `GroupList` (
   `GroupUpdatedAt` date NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Indexes for table `GroupList`
+--
+ALTER TABLE `GroupList`
+  ADD PRIMARY KEY (`GroupID`),
+  ADD KEY `OwnerID` (`OwnerID`);
 -- --------------------------------------------------------
 
 --
@@ -183,44 +221,16 @@ CREATE TABLE `GroupMember` (
 --
 
 CREATE TABLE `JoinRequests` (
-    RequestID INT AUTO_INCREMENT PRIMARY KEY,
-    GroupID INT NOT NULL,
-    MemberID INT NOT NULL,
-    RequestDate DATE NOT NULL,
-    FOREIGN KEY (GroupID) REFERENCES GroupList(GroupID) ON DELETE CASCADE,
-    FOREIGN KEY (MemberID) REFERENCES Member(MemberID) ON DELETE CASCADE
+  RequestID INT(50) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  GroupID INT(50) NOT NULL,
+  MemberID INT(50) NOT NULL,
+  RequestDate DATE NOT NULL,
+  FOREIGN KEY (GroupID) REFERENCES GroupList(GroupID) ON DELETE CASCADE,
+  FOREIGN KEY (MemberID) REFERENCES Member(MemberID) ON DELETE CASCADE
 );
 
+
 -- --------------------------------------------------------
-
---
--- Table structure for table `Member`
---
-
-CREATE TABLE `Member` (
-  `MemberID` int(50) NOT NULL,
-  `Username` varchar(50) NOT NULL,
-  `Password` varchar(50) NOT NULL,
-  `FirstName` varchar(50) NOT NULL,
-  `LastName` varchar(50) NOT NULL,
-  `DateOfBirth` date DEFAULT NULL,
-  `City` varchar(50) DEFAULT NULL,
-  `Country` varchar(50) DEFAULT NULL,
-  `Email` varchar(50) NOT NULL,
-  `Profession` varchar(50) DEFAULT NULL,
-  `Privilege` enum('Administrator','Senior','Junior') NOT NULL,
-  `Status` enum('Active','Inactive','Suspended') NOT NULL,
-  `BusinessAccount` tinyint(1) DEFAULT NULL,
-  `UserCreatedAt` date NOT NULL,
-  `UserUpdatedAt` date NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `Member`
---
-
-INSERT INTO `Member` (`MemberID`, `Username`, `Password`, `FirstName`, `LastName`, `DateOfBirth`, `City`, `Country`, `Email`, `Profession`, `Privilege`, `Status`, `BusinessAccount`, `UserCreatedAt`, `UserUpdatedAt`) VALUES
-(1, 'testuser', 'testpassword', 'Test', 'User', NULL, NULL, NULL, 'testuser@example.com', NULL, 'Junior', 'Active', 0, '2024-11-06', '2024-11-06');
 
 -- --------------------------------------------------------
 
@@ -298,7 +308,6 @@ ALTER TABLE `Comment`
 -- Indexes for table `Event`
 --
 ALTER TABLE `Event`
-  ADD PRIMARY KEY (`EventID`),
   ADD KEY `EventCreatorID` (`EventCreatorID`),
   ADD KEY `EventGroupID` (`EventGroupID`);
 
@@ -306,7 +315,6 @@ ALTER TABLE `Event`
 -- Indexes for table `EventOptions`
 --
 ALTER TABLE `EventOptions`
-  ADD PRIMARY KEY (`OptionID`),
   ADD KEY `EventID` (`EventID`);
 
 --
@@ -336,15 +344,8 @@ ALTER TABLE `Gift`
 -- Indexes for table `GiftExchange`
 --
 ALTER TABLE `GiftExchange`
-  ADD PRIMARY KEY (`GiftExchangeID`),
   ADD KEY `GiftGroupID` (`GiftGroupID`);
 
---
--- Indexes for table `GroupList`
---
-ALTER TABLE `GroupList`
-  ADD PRIMARY KEY (`GroupID`),
-  ADD KEY `OwnerID` (`OwnerID`);
 
 --
 -- Indexes for table `GroupMember`
@@ -353,14 +354,6 @@ ALTER TABLE `GroupMember`
   ADD PRIMARY KEY (`GroupMemberID`),
   ADD KEY `GroupID` (`GroupID`),
   ADD KEY `MemberID` (`MemberID`);
-
---
--- Indexes for table `Member`
---
-ALTER TABLE `Member`
-  ADD PRIMARY KEY (`MemberID`),
-  ADD UNIQUE KEY `UniqueEmail` (`Email`),
-  ADD UNIQUE KEY `UniqueUsername` (`Username`) USING BTREE;
 
 --
 -- Indexes for table `Message`
@@ -374,7 +367,6 @@ ALTER TABLE `Message`
 -- Indexes for table `Post`
 --
 ALTER TABLE `Post`
-  ADD PRIMARY KEY (`PostID`),
   ADD KEY `MemberID` (`MemberID`);
 
 --

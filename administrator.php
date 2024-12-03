@@ -689,13 +689,16 @@ function validateDate($date) {
 </head>
 
 <body>
+    <!-- Top Bar -->
     <div class="top-bar">
-        <h1>Control</h1>
-        <div class="button-container">
-            <a href="profile.php"><button><h3>Profile</h3></button></a>
-            <a href="session/signout.php"><button><h3>Sign Out</h3></button></a>
+        <h1>Console</h1>
+        <a href="profile.php"><button>
+                <h3>Profile</h3>
+            </button></a>
+        <a href="index.php"><button>
+                <h3>Homepage</h3>
+            </button></a>
         </div>
-    </div>
 
     <div class="container">
         <?php if (!empty($errors)): ?>

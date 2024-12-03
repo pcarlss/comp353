@@ -2,14 +2,14 @@
 require '../session/db_connect.php';
 session_start();
 
-// Ensure the user is logged in
+
 if (!isset($_SESSION['username'])) {
     header("Location: login.php");
     exit;
 }
 $username = $_SESSION['username'];
 
-// Fetch the member ID
+
 $stmt = $conn->prepare("SELECT memberid FROM Member WHERE username = ?");
 if (!$stmt) {
     die("Prepare failed: (" . $conn->errno . ") " . $conn->error);
@@ -31,12 +31,12 @@ $loggedInUserID = $_SESSION['memberid'];
 $friendID = isset($_GET['friendID']) ? intval($_GET['friendID']) : 0;
 $loggedInUsername = $_SESSION['username'];
 
-// Validate friend ID
+
 if ($friendID <= 0) {
     die("Invalid friend ID.");
 }
 
-// Retrieve the friend's username
+
 $stmt = $conn->prepare("SELECT Username FROM Member WHERE MemberID = ?");
 if (!$stmt) {
     die("Prepare failed: (" . $conn->errno . ") " . $conn->error);
@@ -51,7 +51,7 @@ if (empty($friendUsername)) {
     die("User not found."); // Handle invalid friend ID
 }
 
-// Handle message sending
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['messageContent'])) {
     $messageContent = trim($_POST['messageContent']);
 
@@ -76,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['messageContent'])) {
     }
 }
 
-// Retrieve messages between the logged-in user and the friend
+
 $stmt = $conn->prepare("
     SELECT MemberID1, MemberID2, MessageContent, SentAt 
     FROM Message 
@@ -103,14 +103,14 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Messages with <?php echo htmlspecialchars($friendUsername); ?></title>
     <style>
-        /* Basic reset */
+       
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
-        /* Layout styling */
+       
         body {
             display: flex;
             justify-content: center;
@@ -120,7 +120,7 @@ $conn->close();
             overflow-y: scroll;
         }
 
-        /* Top Bar Styling */
+        
         .top-bar {
             position: fixed;
             top: 0;
@@ -158,14 +158,14 @@ $conn->close();
             background-color: #ddd;
         }
 
-        /* Main Container */
+        
         .container {
             width: 100%;
             max-width: 600px;
             padding: 10px;
         }
 
-        /* Message Box Styling */
+        
         .message-box {
             width: 100%;
             background-color: #fff;
@@ -180,7 +180,7 @@ $conn->close();
             color: #4c87ae;
         }
 
-        /* Messages Container */
+        
         .messages {
             max-height: 400px;
             overflow-y: auto;
@@ -190,7 +190,7 @@ $conn->close();
             gap: 10px;
         }
 
-        /* Individual Message Styling */
+        
         .message {
             padding: 10px;
             border-radius: 4px;
@@ -217,7 +217,7 @@ $conn->close();
             align-self: flex-end;
         }
 
-        /* Message Form Styling */
+        
         .message-form {
             display: flex;
             justify-content: space-between;

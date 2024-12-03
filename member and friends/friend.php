@@ -2,17 +2,14 @@
 require '../session/db_connect.php';
 session_start();
 
-// Ensure the user is logged in
 if (!isset($_SESSION['username'])) {
     header("Location: login.php");
     exit;
 }
 
-// Get the logged-in username from the session
 $username = $_SESSION['username'];
 
-// Fetch the member ID and profilePic
-$stmt = $conn->prepare("SELECT memberid, profilePic FROM Member WHERE username = ?");
+$stmt = $conn->prepare("SELECT memberid, profilePic, Status FROM Member WHERE username = ?");
 if (!$stmt) {
     die("Prepare failed: (" . $conn->errno . ") " . $conn->error);
 }
@@ -25,18 +22,16 @@ if ($result && $result->num_rows > 0) {
     $memberID = $row['memberid'];
     $_SESSION['memberid'] = $memberID;
     $userProfilePic = $row['profilePic'];
+    $userStatus = $row['Status'];
 } else {
-    header("Location: error.php?message=User+not+found");
+    header("Location: error.php?message=User+not+found+or+account+suspended");
     exit();
 }
 
 $stmt->close();
 
-// Function to get profile picture URL
 function getProfilePic($profilePic) {
     $defaultPicPath = "../uploads/images/default_pfp.png";
-
-    // If profilePic is set and the file exists, return its path
     if (!empty($profilePic) && file_exists(__DIR__ . "/../" . $profilePic)) {
         return "../" . htmlspecialchars($profilePic);
     } else {
@@ -44,48 +39,48 @@ function getProfilePic($profilePic) {
     }
 }
 
-// Get the logged-in user's ID and username
 $loggedInUsername = $_SESSION['username'];
 $loggedInUserID = $_SESSION['memberid'];
 
-// Retrieve users excluding the logged-in user and users who are blocked or have blocked the user
 $users = [];
-$stmt = $conn->prepare("
-    SELECT MemberID, Username, profilePic,
-    CASE WHEN EXISTS (
-        SELECT 1 FROM Friendship 
-        WHERE (MemberID1 = ? AND MemberID2 = Member.MemberID) 
-        OR (MemberID2 = ? AND MemberID1 = Member.MemberID)
-    ) THEN 1 ELSE 0 END AS IsFriend,
-    CASE WHEN EXISTS (
-        SELECT 1 FROM Blocked 
-        WHERE (MemberID1 = ? AND MemberID2 = Member.MemberID)
-    ) THEN 1 ELSE 0 END AS IsBlocked,
-    CASE WHEN EXISTS (
-        SELECT 1 FROM FriendOrGroupRequest 
-        WHERE (RequestorID = ? AND RequesteeID = Member.MemberID)
-    ) THEN 1 ELSE 0 END AS IsRequestSent,
-    CASE WHEN EXISTS (
-        SELECT 1 FROM FriendOrGroupRequest 
-        WHERE (RequestorID = Member.MemberID AND RequesteeID = ?)
-    ) THEN 1 ELSE 0 END AS HasSentRequestToMe
-    FROM Member 
-    WHERE MemberID != ?  -- Exclude the logged-in user
-    AND NOT EXISTS (
-        SELECT 1 FROM Blocked 
-        WHERE MemberID2 = ? AND MemberID1 = Member.MemberID
-    )
-");
-$stmt->bind_param("iiiiiii", $loggedInUserID, $loggedInUserID, $loggedInUserID, $loggedInUserID, $loggedInUserID, $loggedInUserID, $loggedInUserID);
-
-$stmt->execute();
-$result = $stmt->get_result();
-while ($row = $result->fetch_assoc()) {
-    $users[] = $row;
+if ($userStatus === 'Active') {
+    $stmt = $conn->prepare("
+        SELECT MemberID, Username, profilePic,
+        CASE WHEN EXISTS (
+            SELECT 1 FROM Friendship 
+            WHERE (MemberID1 = ? AND MemberID2 = Member.MemberID) 
+            OR (MemberID2 = ? AND MemberID1 = Member.MemberID)
+        ) THEN 1 ELSE 0 END AS IsFriend,
+        CASE WHEN EXISTS (
+            SELECT 1 FROM Blocked 
+            WHERE (MemberID1 = ? AND MemberID2 = Member.MemberID)
+        ) THEN 1 ELSE 0 END AS IsBlocked,
+        CASE WHEN EXISTS (
+            SELECT 1 FROM FriendOrGroupRequest 
+            WHERE (RequestorID = ? AND RequesteeID = Member.MemberID)
+        ) THEN 1 ELSE 0 END AS IsRequestSent,
+        CASE WHEN EXISTS (
+            SELECT 1 FROM FriendOrGroupRequest 
+            WHERE (RequestorID = Member.MemberID AND RequesteeID = ?)
+        ) THEN 1 ELSE 0 END AS HasSentRequestToMe
+        FROM Member 
+        WHERE MemberID != ?  
+        AND Status = 'Active'
+        AND NOT EXISTS (
+            SELECT 1 FROM Blocked 
+            WHERE MemberID2 = ? AND MemberID1 = Member.MemberID
+        )
+    ");
+    $stmt->bind_param("iiiiiii", $loggedInUserID, $loggedInUserID, $loggedInUserID, $loggedInUserID, $loggedInUserID, $loggedInUserID, $loggedInUserID);
+    
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $users[] = $row;
+    }
+    $stmt->close();
 }
-$stmt->close();
 
-// Handle friend request, cancel friend request, or block/unblock submission via AJAX
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
     $response = [];
@@ -95,7 +90,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $action = $_POST['action'];
 
         if ($action === "block") {
-            // Remove any existing friendship
             $stmt = $conn->prepare("DELETE FROM Friendship WHERE (MemberID1 = ? AND MemberID2 = ?) OR (MemberID2 = ? AND MemberID1 = ?)");
             if ($stmt) {
                 $stmt->bind_param("iiii", $loggedInUserID, $requesteeID, $loggedInUserID, $requesteeID);
@@ -103,7 +97,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->close();
             }
 
-            // Block the user
             $stmt = $conn->prepare("INSERT INTO Blocked (MemberID1, MemberID2) VALUES (?, ?)");
             if ($stmt) {
                 $stmt->bind_param("ii", $loggedInUserID, $requesteeID);
@@ -115,7 +108,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->close();
             }
         } elseif ($action === "unblock") {
-            // Unblock the user
             $stmt = $conn->prepare("DELETE FROM Blocked WHERE MemberID1 = ? AND MemberID2 = ?");
             if ($stmt) {
                 $stmt->bind_param("ii", $loggedInUserID, $requesteeID);
@@ -127,7 +119,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->close();
             }
         } elseif ($action === "friendRequest") {
-            // Check if a friend request already exists from the requestee to the logged-in user
             $stmt = $conn->prepare("SELECT * FROM FriendOrGroupRequest WHERE RequestorID = ? AND RequesteeID = ?");
             if ($stmt) {
                 $stmt->bind_param("ii", $requesteeID, $loggedInUserID);
@@ -136,10 +127,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->close();
 
                 if ($existingRequest->num_rows > 0) {
-                    // Mutual friend request exists
                     $response['message'] = "User has already sent you a friend request. Please check your friend list.";
                 } else {
-                    // Check if a friend request already exists from logged-in user to requestee
                     $stmt = $conn->prepare("SELECT * FROM FriendOrGroupRequest WHERE RequestorID = ? AND RequesteeID = ?");
                     if ($stmt) {
                         $stmt->bind_param("ii", $loggedInUserID, $requesteeID);
@@ -150,7 +139,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         if ($existingSentRequest->num_rows > 0) {
                             $response['message'] = "Friend request already sent.";
                         } else {
-                            // Send a friend request
                             $stmt = $conn->prepare("INSERT INTO FriendOrGroupRequest (RequestorID, RequesteeID, RequestMadeAt) VALUES (?, ?, ?)");
                             if ($stmt) {
                                 $requestMadeAt = date("Y-m-d H:i:s");
@@ -168,7 +156,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         } elseif ($action === "cancelFriendRequest") {
-            // Cancel a friend request
             $stmt = $conn->prepare("DELETE FROM FriendOrGroupRequest WHERE RequestorID = ? AND RequesteeID = ?");
             if ($stmt) {
                 $stmt->bind_param("ii", $loggedInUserID, $requesteeID);
@@ -187,39 +174,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Close the database connection if not already closed
-if ($conn) {
-    $conn->close();
-}
+$conn->close();
 ?>
+
+
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Existing head content -->
+    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Search for Users</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        /* Basic reset */
+        
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
-        /* Layout styling */
+        
         body {
             display: flex;
             justify-content: center;
             background-color: #f0f2f5;
             font-family: Arial, sans-serif;
-            padding-top: 120px; /* Adjusted to accommodate the fixed top bar */
+            padding-top: 120px; 
             overflow-y: scroll;
         }
 
-        /* Top Bar Styling (Unchanged) */
         .top-bar {
             position: fixed;
             top: 0;
@@ -253,14 +238,14 @@ if ($conn) {
             background-color: #ddd;
         }
 
-        /* Centering the main content */
+        
         .container {
             width: 100%;
             max-width: 600px;
             padding: 10px;
         }
 
-        /* Dropdown Item Styling */
+        
         .dropdown-item {
             display: flex;
             align-items: center;
@@ -287,7 +272,7 @@ if ($conn) {
             background-color: #f1f1f1;
         }
 
-        /* Dropdown Content */
+        
         .dropdown-content {
             position: absolute;
             background-color: #fff;
@@ -299,17 +284,17 @@ if ($conn) {
             border-radius: 0 0 4px 4px;
         }
 
-        /* Ensure the search box size remains unchanged */
+        
         .dropdown input[type="text"] {
             width: 100%;
-            max-width: 300px; /* Maintain consistent size */
+            max-width: 300px;
             padding: 10px;
             border: 1px solid #ccc;
             border-radius: 4px;
             box-sizing: border-box;
         }
 
-        /* Selected User Box Styling */
+       
         .selected-user-box {
             margin-top: 20px;
             padding: 20px;
@@ -400,23 +385,22 @@ if ($conn) {
     </style>
 </head>
 <body>
-    <!-- Top Bar (Unchanged) -->
-    <div class="top-bar">
-        <h1>Add Friends</h1>
-        <a href="friendlist.php"><button>
-            <h3>Friends List</h3>
-        </button></a>
-        <a href="../index.php"><button>
-            <h3>Homepage</h3>
-        </button></a>
-    </div>
+<div class="top-bar">
+    <h1>Add Friends</h1>
+    <a href="friendlist.php"><button>
+        <h3>Friends List</h3>
+    </button></a>
+    <a href="../index.php"><button>
+        <h3>Homepage</h3>
+    </button></a>
+</div>
 
-    <!-- Main Content -->
+
+    
     <div class="container">
-        <!-- Title for Dropdown -->
+    
         <h1 style="text-align: center; margin-bottom: 20px;">Search for User</h1>
 
-        <!-- Centered Dropdown -->
         <div style="display: flex; justify-content: center; align-items: center;">
             <div class="dropdown" style="position: relative; width: 100%; max-width: 300px;">
                 <input type="text" id="searchInput" placeholder="Search User" autocomplete="off" onfocus="openDropdown()" oninput="filterFunction()" style="width: 100%;">
@@ -432,7 +416,6 @@ if ($conn) {
         </div>
 
 
-       <!-- Selected User Info -->
       <div id="selectedUserContainer" class="selected-user-box" style="display: none; padding-top: 20px; margin: auto">
           <img id="selectedUserProfilePic" src="<?php echo getProfilePic($userProfilePic); ?>" alt="Selected User's Profile Picture">
           <p id="selectedUsername" class="username-text"></p>
@@ -442,14 +425,12 @@ if ($conn) {
 
     </div>
 
-    <!-- Notification Section -->
     <?php if (!empty($message)): ?>
         <div class="notification <?php echo htmlspecialchars($messageType); ?>">
             <?php echo htmlspecialchars($message); ?>
         </div>
     <?php endif; ?>
-
-    <!-- JavaScript -->
+   
     <script>
         let selectedUserID;
         let isAlreadyFriend = false;
@@ -480,7 +461,6 @@ if ($conn) {
     isRequestSent = isRequestSentStatus === 1;
     hasSentRequestToMe = hasSentRequestToMeStatus === 1;
 
-    // Set the profile picture of the selected user
     const selectedUserProfilePic = document.getElementById("selectedUserProfilePic");
     selectedUserProfilePic.src = profilePic;
     selectedUserProfilePic.alt = "Profile Picture of " + username;
@@ -501,11 +481,10 @@ if ($conn) {
         blockButton.textContent = "Block User";
         blockButton.onclick = blockUser;
     } else if (hasSentRequestToMe) {
-        // Display "Accept Friend Request" button
+       
         friendButton.disabled = false;
         friendButton.textContent = "Accept Friend Request";
         friendButton.onclick = function() {
-            // Redirect to friendlist.php with necessary parameters
             window.location.href = "friendlist.php?action=accept&requestorID=" + selectedUserID;
         };
 

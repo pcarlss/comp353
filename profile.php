@@ -2,92 +2,20 @@
 require 'session/db_connect.php';
 session_start();
 
-// Suppress error output to the browser and log errors instead
+// Error Reporting Configuration
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
-ini_set('error_log', '/path/to/your/php-error.log'); // Adjust the path as needed
+ini_set('error_log', '/path/to/your/php-error.log'); 
 error_reporting(E_ALL);
 
-// Handle AJAX request for updating privacy settings
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_privacy') {
-    // Ensure the user is logged in
-    if (empty($_SESSION['username'])) {
-        echo json_encode(['success' => false, 'message' => 'User not authenticated.']);
-        exit();
-    }
-
-    $username = $_SESSION['username'];
-    $field = $_POST['field'] ?? '';
-    $value = $_POST['value'] ?? '';
-
-    // Define allowed privacy fields and their corresponding database columns
-    $allowed_fields = [
-        'Fname'      => 'Fname',
-        'Lname'      => 'Lname',
-        'BirthDate'  => 'BirthDate',
-        'pCity'      => 'pCity',
-        'pCountry'   => 'pCountry',
-        'Work'       => 'Work',
-        'pStatus'    => 'pStatus'
-    ];
-
-    // Validate the field
-    if (!array_key_exists($field, $allowed_fields)) {
-        echo json_encode(['success' => false, 'message' => 'Invalid privacy field.']);
-        exit();
-    }
-
-    // Validate the value
-    if (!in_array($value, ['0', '1'])) {
-        echo json_encode(['success' => false, 'message' => 'Invalid value for privacy setting.']);
-        exit();
-    }
-
-    // Get the MemberID for the logged-in user
-    $memberIdQuery = "SELECT MemberID FROM Member WHERE Username = ?";
-    $memberIdStmt = $conn->prepare($memberIdQuery);
-    if (!$memberIdStmt) {
-        error_log("Prepare failed: " . $conn->error);
-        echo json_encode(['success' => false, 'message' => 'Database error.']);
-        exit();
-    }
-    $memberIdStmt->bind_param("s", $username);
-    $memberIdStmt->execute();
-    $memberIdStmt->bind_result($memberId);
-    if (!$memberIdStmt->fetch()) {
-        $memberIdStmt->close();
-        echo json_encode(['success' => false, 'message' => 'User not found.']);
-        exit();
-    }
-    $memberIdStmt->close();
-
-    // Update the Privacy table
-    $updateQuery = "UPDATE Privacy SET {$allowed_fields[$field]} = ? WHERE PrivacyID = ?";
-    $updateStmt = $conn->prepare($updateQuery);
-    if (!$updateStmt) {
-        error_log("Prepare failed: " . $conn->error);
-        echo json_encode(['success' => false, 'message' => 'Database error.']);
-        exit();
-    }
-    $updateStmt->bind_param("ii", $value, $memberId);
-    if ($updateStmt->execute()) {
-        echo json_encode(['success' => true, 'message' => 'Privacy setting updated successfully.']);
-    } else {
-        error_log("Execute failed: " . $updateStmt->error);
-        echo json_encode(['success' => false, 'message' => 'Failed to update privacy setting.']);
-    }
-    $updateStmt->close();
-    exit();
-}
-
-// Initialize variables and errors array
+// Initialize Variables
 $errors = [];
 $success = '';
 $firstName = $lastName = $email = $dob = $city = $country = $profession = $status = '';
 $businessAccount = 'Personal';
-$profilePic = 'uploads/images/default_pfp.png'; // Default profile picture
+$profilePic = 'uploads/images/default_pfp.png'; 
 
-// Check for messages from previous actions
+// Retrieve Session Messages
 if (isset($_SESSION['errors'])) {
     $errors = $_SESSION['errors'];
     unset($_SESSION['errors']);
@@ -98,62 +26,218 @@ if (isset($_SESSION['success'])) {
     unset($_SESSION['success']);
 }
 
-// Check if the session variable for the username is set
+// Check if User is Logged In
 if (!empty($_SESSION['username'])) {
     $username = $_SESSION['username'];
 
-    // Handle profile picture upload
+    // Handle POST Requests
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+        $action = $_POST['action'];
+
+        // **A. Handle Privacy Updates via AJAX**
+        if ($action === 'update_privacy') {
+            // Ensure the user is authenticated
+            if (empty($_SESSION['username'])) {
+                echo json_encode(['success' => false, 'message' => 'User not authenticated.']);
+                exit();
+            }
+
+            $field = $_POST['field'] ?? '';
+            $value = $_POST['value'] ?? '';
+
+            // Define Allowed Privacy Fields
+            $allowed_fields = [
+                'Fname'      => 'Fname',
+                'Lname'      => 'Lname',
+                'BirthDate'  => 'BirthDate',
+                'pCity'      => 'pCity',
+                'pCountry'   => 'pCountry',
+                'Work'       => 'Work',
+                'pStatus'    => 'pStatus'
+            ];
+
+            // Validate Field
+            if (!array_key_exists($field, $allowed_fields)) {
+                echo json_encode(['success' => false, 'message' => 'Invalid privacy field.']);
+                exit();
+            }
+
+            // Validate Value
+            if (!in_array($value, ['0', '1'])) {
+                echo json_encode(['success' => false, 'message' => 'Invalid value for privacy setting.']);
+                exit();
+            }
+
+            // Fetch MemberID
+            $memberIdQuery = "SELECT MemberID FROM Member WHERE Username = ?";
+            $memberIdStmt = $conn->prepare($memberIdQuery);
+            if (!$memberIdStmt) {
+                error_log("Prepare failed: " . $conn->error);
+                echo json_encode(['success' => false, 'message' => 'Database error.']);
+                exit();
+            }
+            $memberIdStmt->bind_param("s", $username);
+            $memberIdStmt->execute();
+            $memberIdStmt->bind_result($memberId);
+            if (!$memberIdStmt->fetch()) {
+                $memberIdStmt->close();
+                echo json_encode(['success' => false, 'message' => 'User not found.']);
+                exit();
+            }
+            $memberIdStmt->close();
+
+            // Update Privacy Setting
+            $updateQuery = "UPDATE Privacy SET {$allowed_fields[$field]} = ? WHERE PrivacyID = ?";
+            $updateStmt = $conn->prepare($updateQuery);
+            if (!$updateStmt) {
+                error_log("Prepare failed: " . $conn->error);
+                echo json_encode(['success' => false, 'message' => 'Database error.']);
+                exit();
+            }
+            $updateStmt->bind_param("ii", $value, $memberId);
+            if ($updateStmt->execute()) {
+                echo json_encode(['success' => true, 'message' => 'Privacy setting updated successfully.']);
+            } else {
+                error_log("Execute failed: " . $updateStmt->error);
+                echo json_encode(['success' => false, 'message' => 'Failed to update privacy setting.']);
+            }
+            $updateStmt->close();
+            exit();
+        }
+
+        // **B. Handle Promotion Requests**
+        elseif ($action === 'request_promotion') {
+            // Ensure the user is a Junior member
+            if ($_SESSION['Privilege'] !== 'Junior') {
+                $errors[] = "Only Junior members can request a promotion.";
+            } else {
+                // Fetch MemberID
+                $query = "SELECT MemberID FROM Member WHERE Username = ?";
+                $stmt = $conn->prepare($query);
+                if ($stmt) {
+                    $stmt->bind_param("s", $username);
+                    $stmt->execute();
+                    $stmt->bind_result($memberID);
+                    if (!$stmt->fetch()) {
+                        $errors[] = "Member not found.";
+                    }
+                    $stmt->close();
+
+                    // Check for Existing Promotion Request
+                    $checkQuery = "SELECT COUNT(*) FROM PromotionRequests WHERE MemberID = ?";
+                    $stmt = $conn->prepare($checkQuery);
+                    if ($stmt) {
+                        $stmt->bind_param("i", $memberID);
+                        $stmt->execute();
+                        $stmt->bind_result($count);
+                        $stmt->fetch();
+                        $stmt->close();
+
+                        if ($count > 0) {
+                            $errors[] = "You already have a pending promotion request.";
+                        } else {
+                            // Insert Promotion Request
+                            $insertQuery = "INSERT INTO PromotionRequests (MemberID) VALUES (?)";
+                            $stmt = $conn->prepare($insertQuery);
+                            if ($stmt) {
+                                $stmt->bind_param("i", $memberID);
+                                if ($stmt->execute()) {
+                                    $success = "Promotion request submitted successfully.";
+                                } else {
+                                    $errors[] = "Failed to submit promotion request.";
+                                }
+                                $stmt->close();
+                            } else {
+                                $errors[] = "Database error: " . $conn->error;
+                            }
+                        }
+                    } else {
+                        $errors[] = "Database error: " . $conn->error;
+                    }
+                } else {
+                    $errors[] = "Database error: " . $conn->error;
+                }
+            }
+
+            // Redirect with Success or Error Messages
+            if (!empty($errors)) {
+                $_SESSION['errors'] = $errors;
+                header("Location: profile.php");
+                exit();
+            } elseif (!empty($success)) {
+                $_SESSION['success'] = $success;
+                header("Location: profile.php");
+                exit();
+            }
+        }
+
+        // **C. Handle Profile Picture Upload**
+        elseif ($action === 'upload_picture') {
+            // Profile picture upload logic is handled below
+            // This block can be omitted if handled separately
+        }
+
+        // **D. Handle Profile Field Updates**
+        elseif ($action === 'update_field') {
+            // Profile field update logic is handled below
+            // This block can be omitted if handled separately
+        }
+    }
+
+    // **C. Handle Profile Picture Upload (Continued)**
     if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['upload_picture'])) {
-        // Define size limit
         $maxFileSize = 5 * 1024 * 1024; // 5MB
 
-        // Check if file was uploaded without errors
         if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] == UPLOAD_ERR_OK) {
             $file = $_FILES['profile_picture'];
             $fileSize = $file['size'];
 
-            // Validate file size
+            // Validate File Size
             if ($fileSize > $maxFileSize) {
                 $errors[] = "File size must be less than 5MB.";
             }
 
-            // Verify that the file is an image
+            // Validate Image File
             $check = getimagesize($file['tmp_name']);
             if ($check !== false) {
-                // Get the image MIME type
-                $fileType = $check['mime'];
-                // Generate a unique filename
-                $fileExtension = pathinfo($file['name'], PATHINFO_EXTENSION);
+                $fileExtension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+                $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif'];
+
+                // Validate File Extension
+                if (!in_array($fileExtension, $allowedExtensions)) {
+                    $errors[] = "Invalid file type. Only JPG, JPEG, PNG, and GIF are allowed.";
+                }
+
+                // Generate Unique File Name
                 $newFileName = uniqid('pfp_', true) . '.' . $fileExtension;
 
-                // Define upload directories
+                // Define Upload Paths
                 $uploadDir = __DIR__ . '/uploads/images/';
                 $relativeDir = 'uploads/images/';
                 $uploadPath = $uploadDir . $newFileName;
                 $relativePath = $relativeDir . $newFileName;
 
-                // Check if the uploads/images directory exists, if not, create it
+                // Create Upload Directory if Not Exists
                 if (!file_exists($uploadDir)) {
                     if (!mkdir($uploadDir, 0755, true)) {
                         $errors[] = "Failed to create directory for uploads.";
                     }
                 }
 
-                // Check if the directory is writable
+                // Check if Upload Directory is Writable
                 if (!is_writable($uploadDir)) {
                     $errors[] = "Upload directory is not writable.";
                 }
 
+                // Move Uploaded File
                 if (empty($errors)) {
-                    // Move the uploaded file to the designated directory
                     if (move_uploaded_file($file['tmp_name'], $uploadPath)) {
-                        // Update the ProfilePic field in the database
+                        // Update Database with New Profile Picture
                         $stmt = $conn->prepare("UPDATE Member SET ProfilePic = ?, UserUpdatedAt = NOW() WHERE Username = ?");
                         if (!$stmt) {
                             $errors[] = "Database error: " . $conn->error;
                         } else {
                             $stmt->bind_param('ss', $relativePath, $username);
-
                             if ($stmt->execute()) {
                                 $success = "Your profile picture has been updated successfully.";
                                 $profilePic = $relativePath;
@@ -172,15 +256,24 @@ if (!empty($_SESSION['username'])) {
         } else {
             $errors[] = "No file uploaded or there was an upload error.";
         }
+
+        // Redirect with Success or Error Messages
+        if (!empty($errors)) {
+            $_SESSION['errors'] = $errors;
+            header("Location: profile.php");
+            exit();
+        } elseif (!empty($success)) {
+            $_SESSION['success'] = $success;
+            header("Location: profile.php");
+            exit();
+        }
     }
 
-    // Handle profile updates (fields like firstname, lastname, etc.)
+    // **D. Handle Profile Field Updates (Continued)**
     if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['field']) && !isset($_POST['upload_picture'])) {
-        // Get the field and value from POST data
         $field = $_POST['field'];
         $value = trim($_POST['value']);
 
-        // Define allowed fields and their corresponding database columns
         $allowed_fields = [
             'firstname'   => 'FirstName',
             'lastname'    => 'LastName',
@@ -194,22 +287,22 @@ if (!empty($_SESSION['username'])) {
         if (array_key_exists($field, $allowed_fields)) {
             $db_field = $allowed_fields[$field];
 
-            // Perform validation based on the field
+            // Validate Required Fields
             if (in_array($field, ['firstname', 'lastname', 'email']) && empty($value)) {
                 $errors[] = ucfirst($field) . " is required.";
             }
 
-            // Enforce 45-character limit
+            // Validate Field Length
             if (strlen($value) > 45) {
                 $errors[] = ucfirst($field) . " must not exceed 45 characters.";
             }
 
-            // Additional validation for email
+            // Validate Email Format and Uniqueness
             if ($field === 'email') {
                 if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
                     $errors[] = "Please enter a valid email address.";
                 } else {
-                    // Check for email uniqueness
+                    // Check Email Uniqueness
                     $stmt = $conn->prepare("SELECT Username FROM Member WHERE Email = ? AND Username != ?");
                     if (!$stmt) {
                         $errors[] = "Database error: " . $conn->error;
@@ -225,9 +318,8 @@ if (!empty($_SESSION['username'])) {
                 }
             }
 
-            // Additional validation for date of birth
+            // Validate Date of Birth Format
             if ($field === 'dob' && !empty($value)) {
-                // Validate date format and check if it's a valid date
                 $dateParts = explode('-', $value);
                 if (
                     count($dateParts) === 3 &&
@@ -236,21 +328,19 @@ if (!empty($_SESSION['username'])) {
                     is_numeric($dateParts[2]) &&
                     checkdate((int)$dateParts[1], (int)$dateParts[2], (int)$dateParts[0])
                 ) {
-                    // Valid date
+                    // Valid Date
                 } else {
                     $errors[] = "Invalid date format or date does not exist. Please enter a valid date (YYYY-MM-DD).";
                 }
             }
 
-            // If no errors, proceed to update the database
+            // If No Errors, Update the Profile Field
             if (empty($errors)) {
-                // Prepare the SQL statement
                 $stmt = $conn->prepare("UPDATE Member SET $db_field = ?, UserUpdatedAt = NOW() WHERE Username = ?");
                 if (!$stmt) {
                     $errors[] = "Database error: " . $conn->error;
                 } else {
                     $stmt->bind_param('ss', $value, $username);
-
                     if ($stmt->execute()) {
                         $success = "Your profile has been updated successfully.";
                     } else {
@@ -259,15 +349,31 @@ if (!empty($_SESSION['username'])) {
                     $stmt->close();
                 }
             }
+
+            // Redirect with Success or Error Messages
+            if (!empty($errors)) {
+                $_SESSION['errors'] = $errors;
+                header("Location: profile.php");
+                exit();
+            } elseif (!empty($success)) {
+                $_SESSION['success'] = $success;
+                header("Location: profile.php");
+                exit();
+            }
         } else {
             $errors[] = "Invalid field.";
+            $_SESSION['errors'] = $errors;
+            header("Location: profile.php");
+            exit();
         }
     }
 
-    // Fetch user details
-    $query = "SELECT MemberID, FirstName, LastName, Email, DateOfBirth, City, Country, Profession, BusinessAccount, ProfilePic, Status 
+    // **Fetch User Data**
+    $query = "SELECT MemberID, FirstName, LastName, Email, DateOfBirth, City, Country, Profession, BusinessAccount, ProfilePic, Privilege, Status 
               FROM Member 
               WHERE Username = ?";
+
+    $isAdmin = false;
 
     if ($stmt = $conn->prepare($query)) {
         $stmt->bind_param("s", $username);
@@ -275,10 +381,8 @@ if (!empty($_SESSION['username'])) {
         $result = $stmt->get_result();
 
         if ($result->num_rows > 0) {
-            // Fetching the user data
             $user = $result->fetch_assoc();
 
-            // Fetch and assign user data
             $memberId = $user['MemberID'];
             $firstName = $user['FirstName'] ?? '';
             $lastName = $user['LastName'] ?? '';
@@ -290,14 +394,19 @@ if (!empty($_SESSION['username'])) {
             $status = $user['Status'] ?? '';
             $businessAccount = $user['BusinessAccount'] ? 'Business' : 'Personal';
             $profilePic = $user['ProfilePic'] ?? 'uploads/images/default_pfp.png';
+
+            $_SESSION['Privilege'] = $user['Privilege'];
+
+            if ($_SESSION['Privilege'] === 'Administrator') {
+                $isAdmin = true;
+            }
         } else {
-            // Handle case when user data is not found
             $errors[] = "User not found.";
         }
         $stmt->close();
     }
 
-    // Fetch privacy settings for the user
+    // **Fetch Privacy Settings**
     $privacyQuery = "SELECT Fname, Lname, BirthDate, pCity, pCountry, Work, pStatus FROM Privacy WHERE PrivacyID = ?";
     $privacyStmt = $conn->prepare($privacyQuery);
     if ($privacyStmt) {
@@ -308,7 +417,6 @@ if (!empty($_SESSION['username'])) {
         if ($privacyResult->num_rows > 0) {
             $userPrivacy = $privacyResult->fetch_assoc();
         } else {
-            // If no privacy settings found, initialize with defaults (all false)
             $userPrivacy = [
                 'Fname'      => 0,
                 'Lname'      => 0,
@@ -321,12 +429,10 @@ if (!empty($_SESSION['username'])) {
         }
         $privacyStmt->close();
     } else {
-        // Handle prepare statement error
         $errors[] = "Failed to fetch privacy settings.";
     }
 }
 
-// Close the database connection
 $conn->close();
 ?>
 
@@ -334,7 +440,6 @@ $conn->close();
 <html lang="en">
 
 <head>
-    <!-- Include your CSS styles here -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Profile Page</title>
@@ -392,8 +497,9 @@ $conn->close();
             border-radius: 5px;
             cursor: pointer;
             transition: background-color 0.3s;
-            width: 120px; /* Fixed width to match "Homepage" button */
+            width: 140px; 
             text-align: center;
+            white-space: nowrap;
         }
 
         .top-bar button:hover {
@@ -411,7 +517,8 @@ $conn->close();
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             padding: 20px;
-            margin-top: 120px;
+            margin-top: 70px;
+            margin-bottom: 70px;
         }
 
         h2 {
@@ -457,6 +564,23 @@ $conn->close();
         .profile-picture label:hover {
             background-color: #6caad3;
         }
+
+        
+.profile-meta {
+    display: inline-block; 
+    margin-bottom: 10px; 
+    font-size: 1.2em; 
+}
+
+.profile-meta .label {
+    color: #4c87ae;
+    font-weight: bold; 
+}
+
+.profile-meta .value {
+    color: #000; 
+    font-weight: normal; 
+}
 
         /* Profile Item Styling */
         .profile-item {
@@ -524,7 +648,28 @@ $conn->close();
             cursor: pointer;
         }
 
-        /* Error and success messages */
+        .promotion-request-form {
+    text-align: left; 
+}
+
+.promotion-button {
+    background-color: #4c87ae; 
+    color: white; 
+    border: none;
+    padding: 10px 10px; 
+    font-size: 1em;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.2s; 
+}
+
+.promotion-button:hover {
+    background-color: #6caad3; 
+    transform: scale(1.05); 
+}
+
+
+    
         .message {
             margin-bottom: 20px;
             padding: 10px;
@@ -556,6 +701,8 @@ $conn->close();
             .top-bar button {
                 width: 100%; /* Buttons take full width on small screens */
             }
+            
+
         }
     </style>
 
@@ -729,53 +876,49 @@ $conn->close();
             input.value = formattedValue; // Update input value
         }
 
-        // Handle Privacy Checkbox Changes
-        document.querySelectorAll('.privacy-checkbox').forEach(function (checkbox) {
-            checkbox.addEventListener('change', function () {
-                const field = this.getAttribute('data-field');
-                const value = this.checked ? 1 : 0;
+        document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.privacy-checkbox').forEach(function (checkbox) {
+        checkbox.addEventListener('change', function () {
+            const field = this.getAttribute('data-field');
+            const value = this.checked ? 1 : 0;
 
-                // Create an AJAX request
-                const xhr = new XMLHttpRequest();
-                xhr.open('POST', 'profile.php', true);
-                xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            // Create an AJAX request
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', 'profile.php', true);
+            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
 
-                // Define what happens on successful data submission
-                xhr.onload = function () {
-                    if (xhr.status === 200) {
-                        try {
-                            const response = JSON.parse(xhr.responseText);
-                            if (response.success) {
-                                // Optionally, display a success message
-                                displaySuccessMessage(response.message);
-                            } else {
-                                // Optionally, display an error message
-                                displayErrorMessage(response.message);
-                                // Revert the checkbox state if there's an error
-                                checkbox.checked = !checkbox.checked;
-                            }
-                        } catch (e) {
-                            console.error('Invalid JSON response');
+            // Define what happens on successful data submission
+            xhr.onload = function () {
+                if (xhr.status === 200) {
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        if (response.success) {
+                            displaySuccessMessage(response.message);
+                        } else {
+                            displayErrorMessage(response.message);
+                            checkbox.checked = !checkbox.checked; // Revert on error
                         }
-                    } else {
-                        console.error('Request failed. Status:', xhr.status);
-                        // Revert the checkbox state if there's an error
-                        checkbox.checked = !checkbox.checked;
+                    } catch (e) {
+                        console.error('Invalid JSON response');
                     }
-                };
+                } else {
+                    console.error('Request failed. Status:', xhr.status);
+                    checkbox.checked = !checkbox.checked; // Revert on failure
+                }
+            };
 
-                // Define what happens in case of error
-                xhr.onerror = function () {
-                    console.error('Request error...');
-                    // Revert the checkbox state if there's an error
-                    checkbox.checked = !checkbox.checked;
-                };
+            // Define what happens in case of error
+            xhr.onerror = function () {
+                console.error('Request error...');
+                checkbox.checked = !checkbox.checked; // Revert on failure
+            };
 
-                // Send the data
-                const params = `action=update_privacy&field=${encodeURIComponent(field)}&value=${encodeURIComponent(value)}`;
-                xhr.send(params);
-            });
+            // Send the data
+            const params = `action=update_privacy&field=${encodeURIComponent(field)}&value=${encodeURIComponent(value)}`;
+            xhr.send(params);
         });
+    });
+});
     </script>
 
 </head>
@@ -785,16 +928,31 @@ $conn->close();
     <!-- Top Bar -->
     <div class="top-bar">
         <h1>Account</h1>
-        <div class="button-container">
-            <a href="index.php"><button>Homepage</button></a>
-            <a href="member and friends/friendlist.php"><button>Friend List</button></a>
-            <a href="session/signout.php"><button>Sign Out</button></a>
+        <a href="index.php"><button>
+                <h3>Homepage</h3>
+            </button></a>
+        <a href="member and friends/friendlist.php"><button>
+                <h3>Friends List</h3>
+            </button></a>
+            <?php if ($isAdmin): ?>
+                <a href="administrator.php"><button><h3>Admin Panel</h3></button></a>
+            <?php endif; ?>
+            <a href="session/signout.php"><button>
+                <h3>Sign Out</h3>
+            </button></a>
         </div>
-    </div>
+
 
     <!-- Profile Content -->
     <div class="container">
         <h2>Profile Information</h2>
+        
+<div class="profile-meta">
+    <span class="label">Username:</span> <span class="value"><?php echo htmlspecialchars($username); ?></span><br>
+    <span class="label">Member ID:</span> <span class="value"><?php echo htmlspecialchars($memberId ?? 'N/A'); ?></span>
+</div>
+
+
 
         <!-- Display Error Messages -->
         <?php if (!empty($errors)): ?>
@@ -1077,6 +1235,15 @@ $conn->close();
                 <label for="privacy-pstatus">Public</label>
             </div>
         </div>
+        
+        <?php if ($_SESSION['Privilege'] === 'Junior'): ?>
+    <form method="POST" action="profile.php" class="promotion-request-form">
+        <input type="hidden" name="action" value="request_promotion">
+        <button type="submit" class="promotion-button">Request Promotion</button>
+    </form>
+<?php endif; ?>
+
+
 
         <!-- Account Type -->
         <div class="profile-item">

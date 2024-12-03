@@ -2,12 +2,12 @@
 require '../session/db_connect.php';
 session_start();
 
-// Enable error reporting for debugging (remove in production)
+
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// Ensure the user is logged in
+
 if (!isset($_SESSION['username'])) {
     header("Location: ../login.php");
     exit;
@@ -15,7 +15,7 @@ if (!isset($_SESSION['username'])) {
 
 $username = $_SESSION['username'];
 
-// Fetch the member ID, profilePic, and Status
+
 $stmt = $conn->prepare("SELECT memberid, profilePic, Status FROM Member WHERE username = ?");
 $stmt->bind_param("s", $username);
 $stmt->execute();
@@ -36,11 +36,11 @@ if ($result && $result->num_rows > 0) {
 
 $stmt->close();
 
-// Function to get profile picture URL
+
 function getProfilePic($profilePic) {
     $defaultPicPath = "../uploads/images/default_pfp.png";
 
-    // If profilePic is set and the file exists, return its path
+    
     if (!empty($profilePic) && file_exists(__DIR__ . "/../" . $profilePic)) {
         return "../" . htmlspecialchars($profilePic);
     } else {
@@ -48,11 +48,11 @@ function getProfilePic($profilePic) {
     }
 }
 
-// Handle friend removal
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['removeFriendID'])) {
     $removeFriendID = $_POST['removeFriendID'];
 
-    // Prevent users from removing themselves
+    
     if ($removeFriendID != $memberID) {
         $stmt = $conn->prepare("DELETE FROM Friendship WHERE (MemberID1 = ? AND MemberID2 = ?) OR (MemberID1 = ? AND MemberID2 = ?)");
         $stmt->bind_param("iiii", $memberID, $removeFriendID, $removeFriendID, $memberID);
@@ -61,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['removeFriendID'])) {
     }
 }
 
-// Handle accepting a friend request with RelationshipType
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acceptFriendID']) && isset($_POST['relationshipType'])) {
     $acceptFriendID = $_POST['acceptFriendID'];
     $relationshipType = $_POST['relationshipType'];
@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acceptFriendID']) && 
     }
 }
 
-// Handle declining a friend request
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['declineFriendID'])) {
     $declineFriendID = $_POST['declineFriendID'];
 
@@ -108,11 +108,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['declineFriendID'])) {
     }
 }
 
-// Initialize empty arrays for friends and friend requests
+
 $friends = [];
 $FriendOrGroupRequest = [];
 
-// Retrieve friends and friend requests only for active users
+
 if ($userStatus === 'Active') {
     // Retrieve friends
     $stmt = $conn->prepare("
@@ -128,7 +128,7 @@ if ($userStatus === 'Active') {
     $friends = $result->fetch_all(MYSQLI_ASSOC);
     $stmt->close();
 
-    // Retrieve friend requests
+    
     $stmt = $conn->prepare("
         SELECT m.MemberID, m.Username, m.profilePic
         FROM FriendOrGroupRequest fr
@@ -154,15 +154,14 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Friend List</title>
     <style>
-        /* Include your CSS styles here */
-        /* Basic reset */
+        
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
-        /* Layout styling */
+       
         body {
             display: flex;
             justify-content: center;
@@ -172,7 +171,7 @@ $conn->close();
             overflow-y: scroll;
         }
 
-        /* Top Bar Styling */
+        
         .top-bar {
             position: fixed;
             top: 0;
@@ -221,7 +220,7 @@ $conn->close();
         .top-bar button:hover {
             background-color: #ddd;
         }
-        /* Centering the main content */
+        
         .container {
             width: 100%;
             max-width: 600px;
@@ -584,7 +583,7 @@ $conn->close();
         </div>
     </div>
 
-    <!-- JavaScript -->
+
     <script>
         // Get the modal
         var modal = document.getElementById("relationshipModal");

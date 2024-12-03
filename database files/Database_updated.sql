@@ -191,7 +191,7 @@ CREATE TABLE `Member` (
 
 
 INSERT INTO `Member` (`MemberID`, `Username`, `Password`, `FirstName`, `LastName`, `DateOfBirth`, `City`, `Country`, `Email`, `Profession`, `Privilege`, `Status`, `BusinessAccount`, `UserCreatedAt`, `UserUpdatedAt`) VALUES
-(1, 'testuser', 'testpassword', 'Test', 'User', NULL, NULL, NULL, 'testuser@example.com', NULL, 'Junior', 'Active', 0, '2024-11-06', '2024-11-06');
+(1, 'testuser', 'testpassword', 'Test', 'User', NULL, NULL, NULL, 'testuser@example.com', NULL, 'Administrator', 'Active', 0, '2024-11-06', '2024-11-06');
 
 --
 -- Triggers `Member`

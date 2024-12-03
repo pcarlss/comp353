@@ -26,6 +26,7 @@ SET time_zone = "+00:00";
 --
 -- Table structure for table `AccessControl`
 --
+DROP TABLE IF EXISTS `AccessControl`;
 
 CREATE TABLE `AccessControl` (
   `AccessID` int(50) NOT NULL,
@@ -52,7 +53,7 @@ CREATE TABLE `Blocked` (
 --
 -- Table structure for table `Privacy`
 --
-
+DROP TABLE IF EXISTS `Privacy`;
 CREATE TABLE `Privacy` (
   `PrivacyID` int(50) NOT NULL,
   `Fname` tinyint(1) NOT NULL DEFAULT 0,
@@ -186,9 +187,9 @@ CREATE TABLE `Member` (
   `UserCreatedAt` date NOT NULL,
   `UserUpdatedAt` date NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
---
--- Dumping data for table `Member`
---
+
+
+
 INSERT INTO `Member` (`MemberID`, `Username`, `Password`, `FirstName`, `LastName`, `DateOfBirth`, `City`, `Country`, `Email`, `Profession`, `Privilege`, `Status`, `BusinessAccount`, `UserCreatedAt`, `UserUpdatedAt`) VALUES
 (1, 'testuser', 'testpassword', 'Test', 'User', NULL, NULL, NULL, 'testuser@example.com', NULL, 'Junior', 'Active', 0, '2024-11-06', '2024-11-06');
 
@@ -258,6 +259,13 @@ CREATE TABLE `JoinRequests` (
   FOREIGN KEY (MemberID) REFERENCES Member(MemberID) ON DELETE CASCADE
 );
 
+ALTER TABLE `JoinRequests` DROP FOREIGN KEY `joinrequests_ibfk_1`;
+
+ALTER TABLE `GroupList`
+MODIFY `GroupID` int(50) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `JoinRequests`
+ADD CONSTRAINT `joinrequests_ibfk_1` FOREIGN KEY (`GroupID`) REFERENCES `GroupList`(`GroupID`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- --------------------------------------------------------
 
@@ -425,6 +433,7 @@ ALTER TABLE `AccessControl`
 --
 -- AUTO_INCREMENT for table `Blocked`
 --
+
 ALTER TABLE `Blocked`
   MODIFY `BlockedID` int(50) NOT NULL AUTO_INCREMENT;
 
@@ -462,7 +471,7 @@ ALTER TABLE `Friendship`
 -- AUTO_INCREMENT for table `Privacy`
 --
 ALTER TABLE `Privacy`
-  MODIFY `PrivacyID` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT;
+  MODIFY `PrivacyID` int(50) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `GiftExchange`
@@ -482,11 +491,13 @@ ALTER TABLE `GroupList`
 ALTER TABLE `GroupMember`
   MODIFY `GroupMemberID` int(50) NOT NULL AUTO_INCREMENT;
 
+ALTER TABLE `JoinRequests` DROP FOREIGN KEY `joinrequests_ibfk_2`;
 --
 -- AUTO_INCREMENT for table `Member`
 --
 ALTER TABLE `Member`
   MODIFY `MemberID` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
 
 --
 -- AUTO_INCREMENT for table `Message`
@@ -517,12 +528,16 @@ ALTER TABLE `AccessControl`
   ADD CONSTRAINT `accesscontrol_ibfk_1` FOREIGN KEY (`PostID`) REFERENCES `Post` (`PostID`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `accesscontrol_ibfk_2` FOREIGN KEY (`GroupID`) REFERENCES `GroupList` (`GroupID`) ON DELETE CASCADE ON UPDATE CASCADE;
 
---
--- Constraints for table `Blocked`
---
+-- Modify MemberID column
+ALTER TABLE `Member`
+  MODIFY `MemberID` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
 ALTER TABLE `Blocked`
-  ADD CONSTRAINT `blocked_ibfk_1` FOREIGN KEY (`MemberID1`) REFERENCES `Member` (`MemberID`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `blocked_ibfk_2` FOREIGN KEY (`MemberID2`) REFERENCES `Member` (`MemberID`) ON DELETE CASCADE ON UPDATE CASCADE;
+  ADD CONSTRAINT `blocked_ibfk_1` FOREIGN KEY (`MemberID1`) REFERENCES `Member`(`MemberID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE `Blocked`
+  ADD CONSTRAINT `blocked_ibfk_2` FOREIGN KEY (`MemberID2`) REFERENCES `Member`(`MemberID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
 
 --
 -- Constraints for table `Privacy`

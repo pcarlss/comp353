@@ -12,10 +12,11 @@ if (!isset($_SESSION['username'])) {
     header("Location: ../login.php");
     exit;
 }
+
 $username = $_SESSION['username'];
 
-// Fetch the member ID and profilePic
-$stmt = $conn->prepare("SELECT memberid, profilePic FROM Member WHERE username = ?");
+// Fetch the member ID, profilePic, and Status
+$stmt = $conn->prepare("SELECT memberid, profilePic, Status FROM Member WHERE username = ?");
 $stmt->bind_param("s", $username);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -25,10 +26,15 @@ if ($result && $result->num_rows > 0) {
     $memberID = $row['memberid'];
     $_SESSION['memberid'] = $memberID;
     $userProfilePic = $row['profilePic'];
+    $userStatus = $row['Status'];
 } else {
-    header("Location: ../error.php?message=User+not+found");
-    exit();
+    // If user not found, provide default access without user data
+    $memberID = null;
+    $userProfilePic = "../uploads/images/default_pfp.png";
+    $userStatus = 'Inactive'; // Default to no user access
 }
+
+$stmt->close();
 
 // Function to get profile picture URL
 function getProfilePic($profilePic) {
@@ -48,7 +54,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['removeFriendID'])) {
 
     // Prevent users from removing themselves
     if ($removeFriendID != $memberID) {
-        // Delete the friendship entry where the logged-in user is either MemberID1 or MemberID2
         $stmt = $conn->prepare("DELETE FROM Friendship WHERE (MemberID1 = ? AND MemberID2 = ?) OR (MemberID1 = ? AND MemberID2 = ?)");
         $stmt->bind_param("iiii", $memberID, $removeFriendID, $removeFriendID, $memberID);
         $stmt->execute();
@@ -61,12 +66,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acceptFriendID']) && 
     $acceptFriendID = $_POST['acceptFriendID'];
     $relationshipType = $_POST['relationshipType'];
 
-    // Validate RelationshipType
     $allowedTypes = ['Family', 'Friend', 'Colleague'];
     if (in_array($relationshipType, $allowedTypes)) {
-        // Prevent users from adding themselves
         if ($acceptFriendID != $memberID) {
-            // Check if the friendship already exists
             $stmt = $conn->prepare("
                 SELECT * FROM Friendship 
                 WHERE (MemberID1 = ? AND MemberID2 = ?) 
@@ -77,7 +79,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acceptFriendID']) && 
             $existingFriendship = $stmt->get_result();
 
             if ($existingFriendship->num_rows == 0) {
-                // Insert into the Friendship table with the selected RelationshipType
                 $stmt = $conn->prepare("
                     INSERT INTO Friendship (MemberID1, MemberID2, RelationshipType) 
                     VALUES (?, ?, ?)
@@ -85,7 +86,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acceptFriendID']) && 
                 $stmt->bind_param("iis", $memberID, $acceptFriendID, $relationshipType);
 
                 if ($stmt->execute()) {
-                    // Delete the friend request after accepting
                     $stmt = $conn->prepare("DELETE FROM FriendOrGroupRequest WHERE RequestorID = ? AND RequesteeID = ?");
                     $stmt->bind_param("ii", $acceptFriendID, $memberID);
                     $stmt->execute();
@@ -100,9 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acceptFriendID']) && 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['declineFriendID'])) {
     $declineFriendID = $_POST['declineFriendID'];
 
-    // Prevent users from declining their own requests
     if ($declineFriendID != $memberID) {
-        // Delete the friend request
         $stmt = $conn->prepare("DELETE FROM FriendOrGroupRequest WHERE RequestorID = ? AND RequesteeID = ?");
         $stmt->bind_param("ii", $declineFriendID, $memberID);
         $stmt->execute();
@@ -110,34 +108,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['declineFriendID'])) {
     }
 }
 
-// Retrieve friends of the logged-in user
-$stmt = $conn->prepare("
-    SELECT m.MemberID, m.Username, f.RelationshipType, m.profilePic
-    FROM Friendship f
-    JOIN Member m ON (f.MemberID1 = m.MemberID AND f.MemberID2 = ?)
-                OR (f.MemberID2 = m.MemberID AND f.MemberID1 = ?)
-");
-$stmt->bind_param("ii", $memberID, $memberID);
-$stmt->execute();
-$result = $stmt->get_result();
-$friends = $result->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+// Initialize empty arrays for friends and friend requests
+$friends = [];
+$FriendOrGroupRequest = [];
 
-// Retrieve friend requests sent to the logged-in user
-$stmt = $conn->prepare("
-    SELECT m.MemberID, m.Username, m.profilePic
-    FROM FriendOrGroupRequest fr
-    JOIN Member m ON fr.RequestorID = m.MemberID
-    WHERE fr.RequesteeID = ?
-");
-$stmt->bind_param("i", $memberID);
-$stmt->execute();
-$FriendOrGroupRequest = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+// Retrieve friends and friend requests only for active users
+if ($userStatus === 'Active') {
+    // Retrieve friends
+    $stmt = $conn->prepare("
+        SELECT m.MemberID, m.Username, f.RelationshipType, m.profilePic
+        FROM Friendship f
+        JOIN Member m ON (f.MemberID1 = m.MemberID AND f.MemberID2 = ?)
+                    OR (f.MemberID2 = m.MemberID AND f.MemberID1 = ?)
+        WHERE m.Status NOT IN ('Suspended', 'Inactive')
+    ");
+    $stmt->bind_param("ii", $memberID, $memberID);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $friends = $result->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+
+    // Retrieve friend requests
+    $stmt = $conn->prepare("
+        SELECT m.MemberID, m.Username, m.profilePic
+        FROM FriendOrGroupRequest fr
+        JOIN Member m ON fr.RequestorID = m.MemberID
+        WHERE fr.RequesteeID = ? AND m.Status NOT IN ('Suspended', 'Inactive')
+    ");
+    $stmt->bind_param("i", $memberID);
+    $stmt->execute();
+    $FriendOrGroupRequest = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+}
 
 // Close the database connection
 $conn->close();
 ?>
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -207,6 +215,7 @@ $conn->close();
             border-radius: 5px;
             cursor: pointer;
             transition: background-color 0.3s;
+            width: 140px;
         }
 
         .top-bar button:hover {
@@ -470,6 +479,9 @@ $conn->close();
                 <h3>Add Friends</h3>
             </button>
         </a>
+        <a href="reports.php"><button>
+        <h3>Reports</h3>
+        </button></a>
         <?php
         if (isset($_SESSION['username'])) {
             echo '<a href="../profile.php"><button><h3>Profile</h3></button></a>';

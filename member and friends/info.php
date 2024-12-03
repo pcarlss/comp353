@@ -2,7 +2,7 @@
 require '../session/db_connect.php';
 session_start();
 
-// Enable error reporting for debugging (remove in production)
+
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
@@ -13,7 +13,7 @@ if (!isset($_SESSION['username'])) {
     exit;
 }
 
-// Validate the incoming friendID parameter
+
 if (!isset($_GET['friendID']) || !is_numeric($_GET['friendID'])) {
     header("Location: ../error.php?message=Invalid+friend+ID");
     exit;
@@ -21,7 +21,7 @@ if (!isset($_GET['friendID']) || !is_numeric($_GET['friendID'])) {
 
 $friendID = (int)$_GET['friendID'];
 
-// Fetch friend details
+
 $stmt = $conn->prepare("
     SELECT 
         m.FirstName, m.LastName, m.DateOfBirth, m.City, m.Country, 
@@ -43,7 +43,7 @@ if ($result && $result->num_rows > 0) {
     exit;
 }
 
-// Function to get profile picture URL
+
 function getProfilePic($profilePic) {
     $defaultPicPath = "../uploads/images/default_pfp.png";
 

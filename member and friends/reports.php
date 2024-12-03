@@ -1,14 +1,13 @@
 <?php
-// Enable error reporting for debugging (remove or comment out in production)
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// Corrected require path
+
 require '../session/db_connect.php';
 session_start();
 
-// Redirect to login if not logged in
+
 if (!isset($_SESSION['username'])) {
     header("Location: login.php");
     exit;
@@ -16,12 +15,12 @@ if (!isset($_SESSION['username'])) {
 
 $username = $_SESSION['username'];
 
-// Initialize variables
+
 $errors = [];
 $success = '';
 $reportResults = [];
 
-// Define allowed fields for reporting
+
 $allowedFields = [
     'FirstName'    => 'First Name',
     'LastName'     => 'Last Name',
@@ -32,7 +31,7 @@ $allowedFields = [
     'Privilege'    => 'Privilege'
 ];
 
-// Handle AJAX requests for auto-complete
+
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'autocomplete') {
     header('Content-Type: application/json');
     $field = $_GET['field'] ?? '';
@@ -43,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         exit();
     }
 
-    // Prepare SQL to fetch distinct values starting with the query
+    
     $sql = "SELECT DISTINCT `$field` FROM Member WHERE `$field` IS NOT NULL AND `$field` LIKE ? ORDER BY `$field` ASC LIMIT 10";
     $stmt = $conn->prepare($sql);
     if ($stmt) {
@@ -62,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     exit();
 }
 
-// Handle form submission for generating reports
+
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['action'] === 'generate_report') {
     $selectedFieldKey = $_POST['selectedField'] ?? '';
     $selectedValue = trim($_POST['selectedValue'] ?? '');
@@ -104,7 +103,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
     }
 }
 
-// Close the database connection
+
 $conn->close();
 ?>
 <!DOCTYPE html>
@@ -115,14 +114,14 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Reports</title>
     <style>
-        /* Basic reset */
+    
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
-        /* Layout and styling */
+        
         body {
             font-family: Arial, sans-serif;
             background-color: #f0f2f5;
@@ -131,7 +130,7 @@ $conn->close();
             padding-top: 60px; /* Space for the fixed top bar */
         }
 
-        /* Top Bar Styling */
+      
         .top-bar {
             position: fixed;
             top: 0;
@@ -173,7 +172,7 @@ $conn->close();
             background-color: #ddd;
         }
 
-        /* Container for the reports */
+        
         .container {
             max-width: 1000px;
             margin: 30px auto;
@@ -189,7 +188,7 @@ $conn->close();
             color: #333;
         }
 
-        /* Form Styling */
+        
         form {
             display: flex;
             flex-direction: column;
@@ -227,7 +226,7 @@ $conn->close();
             background-color: #6caad3;
         }
 
-        /* Error and success messages */
+        
         .message {
             margin-bottom: 20px;
             padding: 10px;
@@ -246,7 +245,7 @@ $conn->close();
             color: #155724;
         }
 
-        /* Scrollable Report Results */
+    
         .report-container {
             margin-top: 20px;
         }
@@ -302,7 +301,7 @@ $conn->close();
             }
         }
 
-        /* Dropdown Suggestions */
+       
         .suggestions {
             border: 1px solid #ccc;
             border-top: none;
@@ -323,7 +322,7 @@ $conn->close();
             background-color: #f0f2f5;
         }
 
-        /* Positioning for autocomplete */
+        
         .autocomplete-container {
             position: relative;
             width: 100%;
@@ -342,11 +341,11 @@ $conn->close();
     </button></a>
 </div>
 
-    <!-- Reports Content -->
+   
     <div class="container">
         <h2>Generate Reports</h2>
 
-        <!-- Display Error Messages -->
+        
         <?php if (!empty($errors)): ?>
             <div class="message error">
                 <ul>
@@ -357,18 +356,18 @@ $conn->close();
             </div>
         <?php endif; ?>
 
-        <!-- Display Success Message -->
+        
         <?php if (!empty($success)): ?>
             <div class="message success">
                 <p><?php echo htmlspecialchars($success); ?></p>
             </div>
         <?php endif; ?>
 
-        <!-- Report Form -->
+        
         <form method="POST" id="reportForm">
             <input type="hidden" name="action" value="generate_report">
 
-            <!-- Select Parameter -->
+            
             <label for="selectedField">Select Parameter:</label>
             <select name="selectedField" id="selectedField" required>
                 <option value="">--Select Parameter--</option>
@@ -377,7 +376,7 @@ $conn->close();
                 <?php endforeach; ?>
             </select>
 
-            <!-- Autocomplete Input for Value -->
+            
             <div class="autocomplete-container">
                 <label for="selectedValue">Enter Value:</label>
                 <input type="text" id="selectedValue" name="selectedValue" autocomplete="off" required>
@@ -387,7 +386,7 @@ $conn->close();
             <button type="submit">Generate Report</button>
         </form>
 
-        <!-- Report Results -->
+       
         <?php if (!empty($reportResults)): ?>
             <div class="report-container">
                 <div class="report-header">
@@ -419,7 +418,7 @@ $conn->close();
         <?php endif; ?>
     </div>
 
-    <!-- JavaScript for Auto-Complete and Hiding Notifications -->
+    
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const selectedField = document.getElementById('selectedField');
@@ -442,7 +441,7 @@ $conn->close();
                     return;
                 }
 
-                // AJAX request for auto-complete
+                
                 const xhr = new XMLHttpRequest();
                 xhr.open('GET', `reports.php?action=autocomplete&field=${encodeURIComponent(field)}&query=${encodeURIComponent(query)}`, true);
                 xhr.onreadystatechange = function () {
@@ -475,7 +474,7 @@ $conn->close();
                 xhr.send();
             });
 
-            // Hide notifications after 3 seconds
+            
             const messages = document.querySelectorAll('.message');
             messages.forEach(function(message) {
                 setTimeout(function() {
@@ -489,7 +488,7 @@ $conn->close();
                 }, 3000); // 3 seconds delay before fading out
             });
 
-            // Hide suggestions when clicking outside
+            
             document.addEventListener('click', function (e) {
                 if (!e.target.closest('.autocomplete-container')) {
                     suggestionsBox.style.display = 'none';

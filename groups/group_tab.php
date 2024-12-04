@@ -8,17 +8,18 @@ if (!isset($_SESSION['username'])) {
     exit();
 }
 
-// Fetch MemberID if not already set in the session
-if (!isset($_SESSION['MemberID'])) {
+// Fetch MemberID and Privilege if not already set in the session
+if (!isset($_SESSION['MemberID']) || !isset($_SESSION['Privilege'])) {
     $username = $_SESSION['username'] ?? null;
     if ($username) {
-        $stmt = $conn->prepare("SELECT MemberID FROM Member WHERE Username = ?");
+        $stmt = $conn->prepare("SELECT MemberID, Privilege FROM Member WHERE Username = ?");
         $stmt->bind_param("s", $username);
         $stmt->execute();
         $result = $stmt->get_result();
         if ($result->num_rows > 0) {
             $row = $result->fetch_assoc();
-            $_SESSION['MemberID'] = $row['MemberID']; // Store MemberID in session
+            $_SESSION['MemberID'] = $row['MemberID'];
+            $_SESSION['Privilege'] = $row['Privilege'];
         }
         $stmt->close();
     }
@@ -33,7 +34,17 @@ $result = $stmt->get_result();
 $memberRow = $result->fetch_assoc();
 $memberID = $memberRow['MemberID'];
 $stmt->close();
+
+// Get the logged-in user's Privilege
+$stmt = $conn->prepare("SELECT Privilege FROM Member WHERE Username = ?");
+$stmt->bind_param("s", $username);
+$stmt->execute();
+$result = $stmt->get_result();
+$privilegeRow = $result->fetch_assoc();
+$userPrivilege = $privilegeRow['Privilege'];
+$stmt->close();
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -505,34 +516,35 @@ function showAddMemberForm(groupId) {
         echo "<li>";
         echo "<strong>$groupName</strong>";
 
-        // Check if user is a member
-        if ($isMember) {
-            echo "<p>Member of this group</p>";
-        } else {
-            echo "<button onclick=\"requestToJoin($groupId, this)\">Request to Join</button>";
-        }
+         // Check if user is an administrator or owner
+         $hasAdminPrivileges = $userPrivilege === 'Administrator';
 
-        if ($isMember) {
-            if (!$isOwner) {
-                // Show Leave Group button for members who are not the owner
-                echo "<button onclick=\"leaveGroup($groupId, this)\">Leave Group</button>";
-                echo "<button onclick=\"viewGroupDetails($groupId)\">Details</button>";
-                
+        if ($isOwner || $hasAdminPrivileges) {
+                    // Show "Details" and "Edit" buttons for administrators or owners
+                    echo "<div>";
+                    echo "<button onclick=\"viewGroupDetails($groupId)\">Details</button>";
+                    echo "<button onclick=\"toggleEditGroupForm($groupId, '$groupName')\">Edit</button>";
+                    echo "<button class='btn-danger' onclick=\"deleteGroup($groupId)\">Delete</button>";
 
-            } else {
-            echo "<div>";
-            echo "<button onclick=\"viewGroupDetails($groupId)\">Details</button>";
-            echo "<button onclick=\"toggleEditGroupForm($groupId, '$groupName')\">Edit</button>";
-            echo "<button class='btn-danger' onclick=\"deleteGroup($groupId)\">Delete</button>";
-            echo "</div>";
-        }
-    }
+                    if ($isOwner) {
+                        echo "<p>Owner of this group</p>";
+                    }
+                    echo "</div>";
+                } elseif ($isMember) {
+                    echo "<p>You are a member of this group</p>";
+                    // Show "Leave Group" button for members
+                    echo "<button onclick=\"leaveGroup($groupId, this)\">Leave Group</button>";
+                    echo "<button onclick=\"viewGroupDetails($groupId)\">Details</button>";
+                } else {
+                    // Show "Request to Join" button for non-members
+                    echo "<button onclick=\"requestToJoin($groupId, this)\">Request to Join</button>";
+                }
 
-        echo "</li>";
-    }
+                echo "</li>";
+            }
 
-    $stmt->close();
-    ?>
+            $stmt->close();
+            ?>
 </ul>
 
 
@@ -571,9 +583,12 @@ function showAddMemberForm(groupId) {
             FROM JoinRequests jr
             INNER JOIN GroupList g ON jr.GroupID = g.GroupID
             INNER JOIN Member m ON jr.MemberID = m.MemberID
-            WHERE g.OwnerID = ?
+            WHERE g.OwnerID = ? OR EXISTS (
+                SELECT 1 FROM Member
+                WHERE MemberID = ? AND Privilege = 'Administrator'
+            )
         ");
-        $stmt->bind_param("i", $memberID);
+        $stmt->bind_param("ii", $memberID, $memberID);
         $stmt->execute();
         $result = $stmt->get_result();
 
@@ -597,8 +612,8 @@ function showAddMemberForm(groupId) {
         $stmt->close();
         ?>
     </ul>
-    
 </section>
+
 <div id="groupDetailsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
     <div style="background: white; padding: 20px; border-radius: 8px; max-width: 500px; width: 90%; position: relative; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
         <button onclick="closeGroupDetails()" style="position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 24px; font-weight: bold; color: black; cursor: pointer;">×</button>

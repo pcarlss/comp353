@@ -35,9 +35,19 @@ $groupUpdatedAt = htmlspecialchars($group['GroupUpdatedAt']);
 $ownerID = $group['OwnerID'];
 $ownerUsername = htmlspecialchars($group['OwnerUsername']);
 
-// Check if the current user is the owner
+// Check if the current user is the owner or an administrator
 $currentUserID = $_SESSION['MemberID'] ?? null;
+
+// Check if the user has administrator privileges
+$stmt = $conn->prepare("SELECT Privilege FROM Member WHERE MemberID = ?");
+$stmt->bind_param("i", $currentUserID);
+$stmt->execute();
+$userResult = $stmt->get_result();
+$userPrivilege = $userResult->fetch_assoc()['Privilege'] ?? null;
+$stmt->close();
+
 $isOwner = $currentUserID == $ownerID;
+$isAdmin = $userPrivilege === 'Administrator';
 
 // Fetch group members
 $stmt = $conn->prepare("
@@ -67,9 +77,8 @@ echo "<p>Created On: $groupCreatedAt</p>";
 echo "<p>Last Updated: $groupUpdatedAt</p>";
 echo "<p>Owner: $ownerUsername</p>";
 
-
 echo "<h4>Members:</h4>";
-if ($isOwner) {
+if ($isOwner || $isAdmin) {
     echo "<button onclick=\"showAddMemberForm($groupID)\" style='margin-bottom: 5px; background-color: #4c87ae; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;'>Add Members</button>";
 }
 
@@ -81,8 +90,8 @@ if (count($members) > 0) {
         // Display the member's name
         echo "<span style='flex-grow: 1;'>{$member['Username']}</span>";
 
-        // Show the remove button only if the current user is the owner and the member is not the owner
-        if ($isOwner && $member['MemberID'] != $ownerID) {
+        // Show the remove button only if the current user is the owner or an administrator and the member is not the owner
+        if (($isOwner || $isAdmin) && $member['MemberID'] != $ownerID) {
             echo "<button onclick=\"removeMember({$member['GroupMemberID']}, this)\" 
                   style='background-color: #e53935; color: white; border: none; padding: 5px 10px; 
                          border-radius: 4px; cursor: pointer; margin-left: 10px;'>

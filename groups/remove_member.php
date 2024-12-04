@@ -10,10 +10,9 @@ if (!isset($_POST['groupMemberID'])) {
 $groupMemberID = intval($_POST['groupMemberID']);
 $currentUserID = $_SESSION['MemberID'] ?? null;
 
-
 // Fetch the group owner for the specified membership
 $stmt = $conn->prepare("
-    SELECT g.OwnerID
+    SELECT g.OwnerID, g.GroupID
     FROM GroupMember gm
     JOIN GroupList g ON gm.GroupID = g.GroupID
     WHERE gm.GroupMemberID = ?
@@ -30,9 +29,23 @@ if ($result->num_rows === 0) {
 
 $row = $result->fetch_assoc();
 $ownerID = $row['OwnerID'];
+$groupID = $row['GroupID'];
 
-// Check if the current user is the owner
-if ($currentUserID != $ownerID) {
+// Check if the current user is the owner or an administrator
+$isOwner = $currentUserID == $ownerID;
+
+// Check if the current user has administrator privileges
+$stmt = $conn->prepare("SELECT Privilege FROM Member WHERE MemberID = ?");
+$stmt->bind_param("i", $currentUserID);
+$stmt->execute();
+$privilegeResult = $stmt->get_result();
+$stmt->close();
+
+$userPrivilege = $privilegeResult->fetch_assoc()['Privilege'] ?? null;
+$isAdmin = $userPrivilege === 'Administrator';
+
+// Authorize the action
+if (!$isOwner && !$isAdmin) {
     echo "Unauthorized action.";
     exit();
 }

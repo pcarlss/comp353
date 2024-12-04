@@ -14,9 +14,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $firstName = $_POST['firstName'];
     $dob = $_POST['dob'];
 
-    // Check if current user is the owner of the group
+    // Check if the current user is the owner or an administrator of the group
     $currentUserID = $_SESSION['MemberID'] ?? null;
 
+    // Fetch group owner ID
     $stmt = $conn->prepare("SELECT OwnerID FROM GroupList WHERE GroupID = ?");
     $stmt->bind_param("i", $groupId);
     $stmt->execute();
@@ -31,8 +32,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $ownerData = $ownerResult->fetch_assoc();
     $isOwner = $ownerData['OwnerID'] == $currentUserID;
 
-    if (!$isOwner) {
-        echo "Only the group owner can add members.";
+    // Check if the current user has administrator privileges
+    $stmt = $conn->prepare("SELECT Privilege FROM Member WHERE MemberID = ?");
+    $stmt->bind_param("i", $currentUserID);
+    $stmt->execute();
+    $privilegeResult = $stmt->get_result();
+    $stmt->close();
+
+    $userPrivilege = $privilegeResult->fetch_assoc()['Privilege'] ?? null;
+    $isAdmin = $userPrivilege === 'Administrator';
+
+    if (!$isOwner && !$isAdmin) {
+        echo "Only the group owner or an administrator can add members.";
         exit();
     }
 
@@ -71,3 +82,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     echo "success";
     exit();
 }
+?>

@@ -16,13 +16,29 @@ $stmt = $conn->prepare("
     SELECT g.GroupID 
     FROM GroupList g 
     INNER JOIN Member m ON g.OwnerID = m.MemberID 
-    WHERE g.GroupID = ? AND m.Username = ?");
+    WHERE g.GroupID = ? AND m.Username = ?
+");
 $stmt->bind_param("is", $groupID, $username);
 $stmt->execute();
 $result = $stmt->get_result();
 
+// If the user is neither the owner nor an administrator
 if ($result->num_rows === 0) {
-    die("You are not authorized to delete this group.");
+    $stmt->close();
+
+    // Check if the user is an administrator
+    $stmt = $conn->prepare("
+        SELECT Privilege 
+        FROM Member 
+        WHERE Username = ? AND Privilege = 'Administrator'
+    ");
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows === 0) {
+        die("You are not authorized to delete this group.");
+    }
 }
 $stmt->close();
 

@@ -469,12 +469,21 @@ $stmtAdminPosts->close();
                             <?php
                             // Parse visibility JSON
                             $visibility = json_decode($row['Visibility'], true);
-                            $permissionLabel = match ($visibility['level'] ?? 'view_add_or_link') {
-                                'view_only' => 'View Only',
-                                'view_and_comment' => 'View and Comment',
-                                'view_add_or_link' => 'View, Add, or Link to Other Contents',
-                                default => 'Unknown',
-                            };
+                            $level = $visibility['level'] ?? 'view_add_or_link';
+                            switch ($level) {
+                                case 'view_only':
+                                    $permissionLabel = 'View Only';
+                                    break;
+                                case 'view_and_comment':
+                                    $permissionLabel = 'View and Comment';
+                                    break;
+                                case 'view_add_or_link':
+                                    $permissionLabel = 'View, Add, or Link to Other Contents';
+                                    break;
+                                default:
+                                    $permissionLabel = 'Unknown';
+                                    break;
+                            }
                             ?>
                             <div class="post" style="position: relative;" onclick="toggleCommentSection(this)">
                                 <h4>Post by <?php echo htmlspecialchars($row['Username']); ?></h4>
@@ -649,24 +658,24 @@ $stmtAdminPosts->close();
         }
 
         function openPlebisciteModal() {
-    const modal = document.getElementById('plebisciteModal');
-    const businessAccountsList = document.getElementById('businessAccountsList');
+            const modal = document.getElementById('plebisciteModal');
+            const businessAccountsList = document.getElementById('businessAccountsList');
 
-    modal.style.display = 'block'; // Show modal
-    businessAccountsList.innerHTML = '<li>Loading...</li>'; // Placeholder while fetching
+            modal.style.display = 'block'; // Show modal
+            businessAccountsList.innerHTML = '<li>Loading...</li>'; // Placeholder while fetching
 
-    // Fetch the business accounts from the server
-    fetch('interactions/fetch_business_accounts.php', {
-        credentials: 'include', // Add this line
-    })
-    .then(response => response.text())
-    .then(data => {
-        businessAccountsList.innerHTML = data; // Populate modal with fetched data
-    })
-    .catch(err => {
-        businessAccountsList.innerHTML = '<li>Failed to fetch business accounts.</li>';
-    });
-}
+            // Fetch the business accounts from the server
+            fetch('interactions/fetch_business_accounts.php', {
+                credentials: 'include', // Add this line
+            })
+                .then(response => response.text())
+                .then(data => {
+                    businessAccountsList.innerHTML = data; // Populate modal with fetched data
+                })
+                .catch(err => {
+                    businessAccountsList.innerHTML = '<li>Failed to fetch business accounts.</li>';
+                });
+        }
 
 
         function closePlebisciteModal() {
@@ -675,33 +684,33 @@ $stmtAdminPosts->close();
         }
 
         function voteToOust(memberID, button) {
-    button.disabled = true; // Prevent multiple clicks
-    button.textContent = "Voting...";
+            button.disabled = true; // Prevent multiple clicks
+            button.textContent = "Voting...";
 
-    fetch('interactions/vote_to_oust.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `memberID=${memberID}`,
-        credentials: 'include', // Add this line
-    })
-    .then((response) => response.json())
-    .then((data) => {
-        if (data.status === 'success') {
-            button.textContent = "Voted";
-            button.style.backgroundColor = "#ccc"; // Change button appearance
-            button.style.cursor = "default";
-        } else {
-            button.textContent = "Vote to Oust";
-            button.disabled = false; // Re-enable button on error
-            alert(data.message);
+            fetch('interactions/vote_to_oust.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `memberID=${memberID}`,
+                credentials: 'include', // Add this line
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.status === 'success') {
+                        button.textContent = "Voted";
+                        button.style.backgroundColor = "#ccc"; // Change button appearance
+                        button.style.cursor = "default";
+                    } else {
+                        button.textContent = "Vote to Oust";
+                        button.disabled = false; // Re-enable button on error
+                        alert(data.message);
+                    }
+                })
+                .catch((err) => {
+                    button.textContent = "Vote to Oust";
+                    button.disabled = false;
+                    alert("An error occurred. Please try again.");
+                });
         }
-    })
-    .catch((err) => {
-        button.textContent = "Vote to Oust";
-        button.disabled = false;
-        alert("An error occurred. Please try again.");
-    });
-}
 
     </script>
     <div class="plebiscite-button" style="position: fixed; bottom: 10px; right: 10px;">

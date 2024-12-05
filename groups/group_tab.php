@@ -162,53 +162,59 @@ $stmt->close();
         .hidden {
             display: none;
         }
+
         #groupDetailsModal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 1000;
-        justify-content: center;
-        align-items: center;
-    }
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
 
-    #groupDetailsModal div {
-        background: white;
-        padding: 20px;
-        border-radius: 8px;
-        max-width: 500px;
-        width: 90%;
-        position: relative;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    }
+        #groupDetailsModal div {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 90%;
+            position: relative;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
 
-    #groupDetailsModal .close-button {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: none;
-    border: none;
-    font-size: 24px;
-    font-weight: bold;
-    color: black;
-    cursor: pointer;
-}
-    #groupDetailsModal h2 {
-        margin-top: 0;
-    }
-    #groupDetailsContent ul {
-    max-height: 200px; /* Set the maximum height */
-    overflow-y: auto; /* Enable vertical scrolling */
-    padding: 10px;
-    border: 1px solid #ddd; /* Optional: Add a border for better visibility */
-    margin: 10px 0;
-    background-color: #f9f9f9; /* Optional: Add a subtle background color */
-    border-radius: 4px;
-}
+        #groupDetailsModal .close-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            font-weight: bold;
+            color: black;
+            cursor: pointer;
+        }
 
+        #groupDetailsModal h2 {
+            margin-top: 0;
+        }
+
+        #groupDetailsContent ul {
+            max-height: 200px;
+            /* Set the maximum height */
+            overflow-y: auto;
+            /* Enable vertical scrolling */
+            padding: 10px;
+            border: 1px solid #ddd;
+            /* Optional: Add a border for better visibility */
+            margin: 10px 0;
+            background-color: #f9f9f9;
+            /* Optional: Add a subtle background color */
+            border-radius: 4px;
+        }
     </style>
     <script>
         function toggleCreateGroupForm() {
@@ -294,112 +300,112 @@ $stmt->close();
             xhr.send(`groupId=${groupId}`);
         }
         function approveRequest(requestId, groupId, user, listItemElement) {
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", "approve_request.php", true);
-    xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "approve_request.php", true);
+            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
 
-    xhr.onreadystatechange = function () {
-        if (xhr.readyState === 4) {
-            if (xhr.status === 200 && xhr.responseText.trim() === "success") {
-                alert(`${user}'s request approved.`);
-                listItemElement.remove(); // Remove the request from the DOM
-            } else {
-                alert("Failed to approve request: " + xhr.responseText);
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200 && xhr.responseText.trim() === "success") {
+                        alert(`${user}'s request approved.`);
+                        listItemElement.remove(); // Remove the request from the DOM
+                    } else {
+                        alert("Failed to approve request: " + xhr.responseText);
+                    }
+                }
+            };
+
+            xhr.send(`requestId=${requestId}&groupId=${groupId}`);
+        }
+
+
+        function declineRequest(requestId, groupId, user, listItemElement) {
+            if (confirm(`Decline ${user}'s request to join this group?`)) {
+                const xhr = new XMLHttpRequest();
+                xhr.open("POST", "decline_request.php", true);
+                xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState === 4 && xhr.status === 200) {
+                        if (xhr.responseText.trim() === "success") {
+                            alert(`${user}'s request declined.`);
+                            listItemElement.remove(); // Remove the request from the DOM
+                        } else {
+                            alert("Failed to decline request.");
+                        }
+                    }
+                };
+
+                xhr.send(`requestId=${requestId}&groupId=${groupId}`);
             }
         }
-    };
+        function leaveGroup(groupId, buttonElement) {
+            if (confirm("Are you sure you want to leave this group?")) {
+                const xhr = new XMLHttpRequest();
+                xhr.open("POST", "leave_group.php", true);
+                xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
 
-    xhr.send(`requestId=${requestId}&groupId=${groupId}`);
-}
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState === 4) {
+                        if (xhr.status === 200 && xhr.responseText.trim() === "success") {
+                            alert("You have left the group.");
+                            buttonElement.parentElement.remove(); // Remove the group from the UI
+                        } else {
+                            alert("Failed to leave the group: " + xhr.responseText);
+                        }
+                    }
+                };
 
-
-function declineRequest(requestId, groupId, user, listItemElement) {
-    if (confirm(`Decline ${user}'s request to join this group?`)) {
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", "decline_request.php", true);
-        xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-
-        xhr.onreadystatechange = function () {
-            if (xhr.readyState === 4 && xhr.status === 200) {
-                if (xhr.responseText.trim() === "success") {
-                    alert(`${user}'s request declined.`);
-                    listItemElement.remove(); // Remove the request from the DOM
-                } else {
-                    alert("Failed to decline request.");
-                }
+                xhr.send(`groupId=${groupId}`);
             }
-        };
+        }
+        function viewGroupDetails(groupId) {
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "group_details.php", true);
+            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
 
-        xhr.send(`requestId=${requestId}&groupId=${groupId}`);
-    }
-}
-function leaveGroup(groupId, buttonElement) {
-    if (confirm("Are you sure you want to leave this group?")) {
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", "leave_group.php", true);
-        xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-
-        xhr.onreadystatechange = function () {
-            if (xhr.readyState === 4) {
-                if (xhr.status === 200 && xhr.responseText.trim() === "success") {
-                    alert("You have left the group.");
-                    buttonElement.parentElement.remove(); // Remove the group from the UI
-                } else {
-                    alert("Failed to leave the group: " + xhr.responseText);
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    const modal = document.getElementById("groupDetailsModal");
+                    const content = document.getElementById("groupDetailsContent");
+                    content.innerHTML = xhr.responseText;
+                    modal.style.display = "flex"; // Show modal
                 }
-            }
-        };
+            };
 
-        xhr.send(`groupId=${groupId}`);
-    }
-}
-function viewGroupDetails(groupId) {
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", "group_details.php", true);
-    xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            xhr.send(`groupId=${groupId}`);
+        }
 
-    xhr.onreadystatechange = function () {
-        if (xhr.readyState === 4 && xhr.status === 200) {
+        function closeGroupDetails() {
             const modal = document.getElementById("groupDetailsModal");
-            const content = document.getElementById("groupDetailsContent");
-            content.innerHTML = xhr.responseText;
-            modal.style.display = "flex"; // Show modal
+            modal.style.display = "none"; // Hide modal
         }
-    };
 
-    xhr.send(`groupId=${groupId}`);
-}
+        function removeMember(groupMemberID, buttonElement) {
+            if (confirm("Are you sure you want to remove this member?")) {
+                const xhr = new XMLHttpRequest();
+                xhr.open("POST", "remove_member.php", true);
+                xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
 
-function closeGroupDetails() {
-    const modal = document.getElementById("groupDetailsModal");
-    modal.style.display = "none"; // Hide modal
-}
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState === 4 && xhr.status === 200) {
+                        if (xhr.responseText.trim() === "success") {
+                            // Remove the member's list item from the DOM
+                            const liElement = buttonElement.parentElement;
+                            liElement.remove();
+                        } else {
+                            alert("Failed to remove member: " + xhr.responseText);
+                        }
+                    }
+                };
 
-function removeMember(groupMemberID, buttonElement) {
-    if (confirm("Are you sure you want to remove this member?")) {
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", "remove_member.php", true);
-        xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-
-        xhr.onreadystatechange = function () {
-            if (xhr.readyState === 4 && xhr.status === 200) {
-                if (xhr.responseText.trim() === "success") {
-                    // Remove the member's list item from the DOM
-                    const liElement = buttonElement.parentElement;
-                    liElement.remove();
-                } else {
-                    alert("Failed to remove member: " + xhr.responseText);
-                }
+                xhr.send(`groupMemberID=${groupMemberID}`);
             }
-        };
+        }
+        function showAddMemberForm(groupId) {
+            closeGroupDetails();
 
-        xhr.send(`groupMemberID=${groupMemberID}`);
-    }
-}
-function showAddMemberForm(groupId) {
-    closeGroupDetails();
-
-        const formHtml = `
+            const formHtml = `
             <div id="addMemberModal" style="display: flex; justify-content: center; align-items: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5);">
                 <div style="background: white; padding: 20px; border-radius: 8px; max-width: 400px; width: 90%; position: relative;">
                     <button onclick="closeAddMemberForm()" style="position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 24px; font-weight: bold; color: black; cursor: pointer;">×</button>
@@ -423,162 +429,164 @@ function showAddMemberForm(groupId) {
                 </div>
             </div>
         `;
-        document.body.insertAdjacentHTML('beforeend', formHtml);
+            document.body.insertAdjacentHTML('beforeend', formHtml);
 
-        const form = document.getElementById("addMemberForm");
-        form.addEventListener("submit", function (e) {
-            e.preventDefault();
+            const form = document.getElementById("addMemberForm");
+            form.addEventListener("submit", function (e) {
+                e.preventDefault();
 
-            const formData = new FormData(form);
-            const xhr = new XMLHttpRequest();
-            xhr.open("POST", "add_member.php", true);
-            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+                const formData = new FormData(form);
+                const xhr = new XMLHttpRequest();
+                xhr.open("POST", "add_member.php", true);
+                xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
 
-            xhr.onreadystatechange = function () {
-        if (xhr.readyState === 4) {
-            if (xhr.status === 200) {
-                const response = xhr.responseText.trim();
-                if (response === "success") {
-                    // Close the Add Member modal
-                    closeAddMemberForm();
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState === 4) {
+                        if (xhr.status === 200) {
+                            const response = xhr.responseText.trim();
+                            if (response === "success") {
+                                // Close the Add Member modal
+                                closeAddMemberForm();
 
-                    // Refresh the group details dynamically
-                    const groupId = formData.get("groupId");
-                    viewGroupDetails(groupId);
-                } else {
-                    alert(response); // Display error message
+                                // Refresh the group details dynamically
+                                const groupId = formData.get("groupId");
+                                viewGroupDetails(groupId);
+                            } else {
+                                alert(response); // Display error message
+                            }
+                        } else {
+                            alert("An error occurred while processing the request.");
+                        }
+                    }
+                };
+
+                const params = new URLSearchParams();
+                for (const [key, value] of formData.entries()) {
+                    params.append(key, value);
                 }
-            } else {
-                alert("An error occurred while processing the request.");
-            }
+                params.append("action", "add_member");
+
+                xhr.send(params.toString());
+            });
         }
-    };
 
-            const params = new URLSearchParams();
-            for (const [key, value] of formData.entries()) {
-                params.append(key, value);
-            }
-            params.append("action", "add_member");
-
-            xhr.send(params.toString());
-        });
-    }
-
-    function closeAddMemberForm() {
-        const modal = document.getElementById("addMemberModal");
-        if (modal) modal.remove();
-    }
+        function closeAddMemberForm() {
+            const modal = document.getElementById("addMemberModal");
+            if (modal) modal.remove();
+        }
     </script>
 
 </head>
 
 <body>
-<header>
-    <nav style="display: flex; justify-content: space-between; align-items: center; padding: 0 1rem; background-color: #4c87ae; color: white;">
-        <!-- Left Side: Homepage Link -->
-        <a href="/comp353/index.php" style="text-decoration: none; color: white; font-size: 1.2rem; font-weight: bold;">
-            Home
-        </a>
+    <header>
+        <nav
+            style="display: flex; justify-content: space-between; align-items: center; padding: 0 1rem; background-color: #4c87ae; color: white;">
+            <!-- Left Side: Homepage Link -->
+            <a href="/comp353/index.php"
+                style="text-decoration: none; color: white; font-size: 1.2rem; font-weight: bold;">
+                Home
+            </a>
 
-        <!-- Center Title -->
-        <div style="flex-grow: 1; text-align: center;">
-            <h1 style="margin: 0; font-size: 1.8rem;">Group Page</h1>
-        </div>
+            <!-- Center Title -->
+            <div style="flex-grow: 1; text-align: center;">
+                <h1 style="margin: 0; font-size: 1.8rem;">Group Page</h1>
+            </div>
 
-        <!-- Right Side: Empty for now -->
-        <div style="width: 100px;"></div>
-    </nav>
-</header>
+            <!-- Right Side: Empty for now -->
+            <div style="width: 100px;"></div>
+        </nav>
+    </header>
     <main>
         <!-- Display Groups Section -->
         <section class="groups-list">
             <h2>All Groups</h2>
             <ul>
-    <?php
-    // Fetch all groups
-    $stmt = $conn->prepare("
+                <?php
+                // Fetch all groups
+                $stmt = $conn->prepare("
         SELECT g.GroupID, g.GroupName, g.OwnerID, 
                EXISTS (
                    SELECT 1 FROM GroupMember gm WHERE gm.GroupID = g.GroupID AND gm.MemberID = ?
                ) AS IsMember
         FROM GroupList g
     ");
-    $stmt->bind_param("i", $memberID);
-    $stmt->execute();
-    $result = $stmt->get_result();
+                $stmt->bind_param("i", $memberID);
+                $stmt->execute();
+                $result = $stmt->get_result();
 
-    while ($row = $result->fetch_assoc()) {
-        $groupId = $row['GroupID'];
-        $groupName = htmlspecialchars($row['GroupName']);
-        $isMember = $row['IsMember'];
-        $isOwner = $row['OwnerID'] == $memberID;
+                while ($row = $result->fetch_assoc()) {
+                    $groupId = $row['GroupID'];
+                    $groupName = htmlspecialchars($row['GroupName']);
+                    $isMember = $row['IsMember'];
+                    $isOwner = $row['OwnerID'] == $memberID;
 
-        echo "<li>";
-        echo "<strong>$groupName</strong>";
+                    echo "<li>";
+                    echo "<strong>$groupName</strong>";
 
-         // Check if user is an administrator or owner
-         $hasAdminPrivileges = $userPrivilege === 'Administrator';
+                    // Check if user is an administrator or owner
+                    $hasAdminPrivileges = $userPrivilege === 'Administrator';
 
-        if ($isOwner || $hasAdminPrivileges) {
-                    // Show "Details" and "Edit" buttons for administrators or owners
-                    echo "<div>";
-                    echo "<button style='margin-right: 10px;' onclick=\"viewGroupDetails($groupId)\">Details</button>";
-                    echo "<button style='margin-right: 10px;' onclick=\"toggleEditGroupForm($groupId, '$groupName')\">Edit</button>";
-                    echo "<button class='btn-danger' onclick=\"deleteGroup($groupId)\">Delete</button>";
+                    if ($isOwner || $hasAdminPrivileges) {
+                        // Show "Details" and "Edit" buttons for administrators or owners
+                        echo "<div>";
+                        echo "<button style='margin-right: 10px;' onclick=\"viewGroupDetails($groupId)\">Details</button>";
+                        echo "<button style='margin-right: 10px;' onclick=\"toggleEditGroupForm($groupId, '$groupName')\">Edit</button>";
+                        echo "<button class='btn-danger' onclick=\"deleteGroup($groupId)\">Delete</button>";
 
-                    if ($isOwner) {
-                        echo "<p>Owner of this group</p>";
+                        if ($isOwner) {
+                            echo "<p>Owner of this group</p>";
+                        }
+                        echo "</div>";
+                    } elseif ($isMember) {
+                        echo "<p>You are a member of this group</p>";
+                        // Show "Leave Group" button for members
+                        echo "<button style='margin-right: 10px;' onclick=\"leaveGroup($groupId, this)\">Leave Group</button>";
+                        echo "<button style='margin-right: 10px;' onclick=\"viewGroupDetails($groupId)\">Details</button>";
+                    } else {
+                        // Show "Request to Join" button for non-members
+                        echo "<button onclick=\"requestToJoin($groupId, this)\">Request to Join</button>";
                     }
-                    echo "</div>";
-                } elseif ($isMember) {
-                    echo "<p>You are a member of this group</p>";
-                    // Show "Leave Group" button for members
-                    echo "<button style='margin-right: 10px;' onclick=\"leaveGroup($groupId, this)\">Leave Group</button>";
-                    echo "<button style='margin-right: 10px;' onclick=\"viewGroupDetails($groupId)\">Details</button>";
-                } else {
-                    // Show "Request to Join" button for non-members
-                    echo "<button onclick=\"requestToJoin($groupId, this)\">Request to Join</button>";
+
+                    echo "</li>";
                 }
 
-                echo "</li>";
-            }
-
-            $stmt->close();
-            ?>
-</ul>
+                $stmt->close();
+                ?>
+            </ul>
 
 
-        <button onclick="toggleCreateGroupForm()">Create Group</button>
-        <section id="createGroupForm" class="create-group hidden">
-            <h2>Create a New Group</h2>
-            <form action="create_group.php" method="POST">
-                <div class="form-group">
-                    <label for="groupName">Group Name</label>
-                    <input type="text" id="groupName" name="groupName" required>
-                </div>
-                <input type="submit" value="Create Group">
-            </form>
-        </section>
-        <!-- Edit Group Form -->
-        <section id="editGroupForm" class="edit-group hidden">
-            <h2>Edit Group</h2>
-            <form action="edit_group.php" method="POST">
-                <input type="hidden" id="editGroupId" name="groupId">
-                <div class="form-group">
-                    <label for="editGroupName">Group Name</label>
-                    <input type="text" id="editGroupName" name="groupName" required>
-                </div>
-                <div class="form-group">
-                    <button type="button" onclick="closeEditGroupForm()">Cancel</button>
-                    <input type="submit" value="Save Changes">
-                </div>
-            </form>
-        </section>
-        <section class="requests-list">
-    <h2>Pending Join Requests</h2>
-    <ul>
-        <?php
-        $stmt = $conn->prepare("
+            <button onclick="toggleCreateGroupForm()">Create Group</button>
+            <section id="createGroupForm" class="create-group hidden">
+                <h2>Create a New Group</h2>
+                <form action="create_group.php" method="POST">
+                    <div class="form-group">
+                        <label for="groupName">Group Name</label>
+                        <input type="text" id="groupName" name="groupName" required>
+                    </div>
+                    <input type="submit" value="Create Group">
+                </form>
+            </section>
+            <!-- Edit Group Form -->
+            <section id="editGroupForm" class="edit-group hidden">
+                <h2>Edit Group</h2>
+                <form action="edit_group.php" method="POST">
+                    <input type="hidden" id="editGroupId" name="groupId">
+                    <div class="form-group">
+                        <label for="editGroupName">Group Name</label>
+                        <input type="text" id="editGroupName" name="groupName" required>
+                    </div>
+                    <div class="form-group">
+                        <button type="button" onclick="closeEditGroupForm()">Cancel</button>
+                        <input type="submit" value="Save Changes">
+                    </div>
+                </form>
+            </section>
+            <section class="requests-list">
+                <h2>Pending Join Requests</h2>
+                <ul>
+                    <?php
+                    $stmt = $conn->prepare("
             SELECT jr.RequestID, jr.GroupID, g.GroupName, m.Username AS RequestingUser
             FROM JoinRequests jr
             INNER JOIN GroupList g ON jr.GroupID = g.GroupID
@@ -588,41 +596,44 @@ function showAddMemberForm(groupId) {
                 WHERE MemberID = ? AND Privilege = 'Administrator'
             )
         ");
-        $stmt->bind_param("ii", $memberID, $memberID);
-        $stmt->execute();
-        $result = $stmt->get_result();
+                    $stmt->bind_param("ii", $memberID, $memberID);
+                    $stmt->execute();
+                    $result = $stmt->get_result();
 
-        if ($result->num_rows > 0) {
-            while ($row = $result->fetch_assoc()) {
-                $requestId = $row['RequestID'];
-                $groupId = $row['GroupID'];
-                $groupName = htmlspecialchars($row['GroupName']);
-                $requestingUser = htmlspecialchars($row['RequestingUser']);
+                    if ($result->num_rows > 0) {
+                        while ($row = $result->fetch_assoc()) {
+                            $requestId = $row['RequestID'];
+                            $groupId = $row['GroupID'];
+                            $groupName = htmlspecialchars($row['GroupName']);
+                            $requestingUser = htmlspecialchars($row['RequestingUser']);
 
-                echo "<li id='request-$requestId'>";
-                echo "<strong>$requestingUser</strong> wants to join <strong>$groupName</strong>";
-                echo " <button onclick=\"approveRequest($requestId, $groupId, '$requestingUser', this.parentElement)\">Approve</button>";
-                echo " <button class='btn-danger' onclick=\"declineRequest($requestId, $groupId, '$requestingUser', this.parentElement)\">Decline</button>";
-                echo "</li>";
-            }
-        } else {
-            echo "<p>No pending join requests.</p>";
-        }
+                            echo "<li id='request-$requestId'>";
+                            echo "<strong>$requestingUser</strong> wants to join <strong>$groupName</strong>";
+                            echo " <button onclick=\"approveRequest($requestId, $groupId, '$requestingUser', this.parentElement)\">Approve</button>";
+                            echo " <button class='btn-danger' onclick=\"declineRequest($requestId, $groupId, '$requestingUser', this.parentElement)\">Decline</button>";
+                            echo "</li>";
+                        }
+                    } else {
+                        echo "<p>No pending join requests.</p>";
+                    }
 
-        $stmt->close();
-        ?>
-    </ul>
-</section>
+                    $stmt->close();
+                    ?>
+                </ul>
+            </section>
 
-<div id="groupDetailsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
-    <div style="background: white; padding: 20px; border-radius: 8px; max-width: 500px; width: 90%; position: relative; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
-        <button onclick="closeGroupDetails()" style="position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 24px; font-weight: bold; color: black; cursor: pointer;">×</button>
-        <h2>Group Details</h2>
-        <div id="groupDetailsContent">
-            <!-- Group details will be loaded dynamically here -->
-        </div>
-    </div>
-</div>
+            <div id="groupDetailsModal"
+                style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+                <div
+                    style="background: white; padding: 20px; border-radius: 8px; max-width: 500px; width: 90%; position: relative; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+                    <button onclick="closeGroupDetails()"
+                        style="position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 24px; font-weight: bold; color: black; cursor: pointer;">×</button>
+                    <h2>Group Details</h2>
+                    <div id="groupDetailsContent">
+                        <!-- Group details will be loaded dynamically here -->
+                    </div>
+                </div>
+            </div>
 
 
 

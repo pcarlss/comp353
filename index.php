@@ -54,6 +54,19 @@ while ($row = $resultGroupPosts->fetch_assoc()) {
     $groupInfo[$groupName] = $isOwner ? "(owner)" : "(member)"; // Store relationship
     $groupedPosts[$groupName][] = $row; // Group posts under group names
 }
+
+// Fetch "Public Posts (Admin)"
+$stmtAdminPosts = $conn->prepare("
+    SELECT Post.*, Member.Username 
+    FROM Post 
+    JOIN Member ON Post.MemberID = Member.MemberID 
+    WHERE Member.Privilege = 'Administrator'
+    ORDER BY Post.PostedAt DESC
+");
+$stmtAdminPosts->execute();
+$resultAdminPosts = $stmtAdminPosts->get_result();
+$stmtAdminPosts->close();
+
 ?>
 
 <!DOCTYPE html>
@@ -175,6 +188,7 @@ while ($row = $resultGroupPosts->fetch_assoc()) {
             margin-bottom: 20px;
             width: 100%;
             max-width: 600px;
+            height: 200px; /* Fixed height */
         }
 
         .post-form h3 {
@@ -264,6 +278,57 @@ while ($row = $resultGroupPosts->fetch_assoc()) {
         </div>
     <?php endif; ?>
 
+   <!-- Public Posts (Admin) Section -->
+<section style="margin-top: 10px; margin-left: 20px; margin-right: 20px;">
+    <h2>Public Posts (Admin)</h2>
+    <?php if ($resultAdminPosts->num_rows > 0): ?>
+        <?php while ($row = $resultAdminPosts->fetch_assoc()): ?>
+            <div class="post" onclick="toggleCommentSection(this)">
+                <h3>Post by <?php echo htmlspecialchars($row['Username']); ?></h3>
+                <p style="font-size: 0.8em; color: #888;">Posted on: <?php echo htmlspecialchars($row['PostedAt']); ?></p>
+                <?php if (!empty($row['PostText'])): ?>
+                    <p><?php echo htmlspecialchars($row['PostText']); ?></p>
+                <?php endif; ?>
+                
+                <!-- Comments Section -->
+                <div class="comment-section">
+                    <?php
+                    $post_id = $row['PostID'];
+                    $comments_result = $conn->query("
+                        SELECT Comment.*, Member.Username 
+                        FROM Comment 
+                        JOIN Member ON Comment.MemberID = Member.MemberID 
+                        WHERE PostID = $post_id 
+                        ORDER BY Comment.CommentedAt ASC
+                    ");
+                    if ($comments_result->num_rows > 0):
+                        while ($comment = $comments_result->fetch_assoc()):
+                    ?>
+                            <div class="comment">
+                                <p><strong><?php echo $comment['Username']; ?>:</strong>
+                                    <?php echo htmlspecialchars($comment['CommentContent']); ?></p>
+                                <p style="font-size: 0.8em; color: #888;"><?php echo $comment['CommentedAt']; ?></p>
+                            </div>
+                    <?php
+                        endwhile;
+                    else:
+                        echo "<p>No comments yet.</p>";
+                    endif;
+                    ?>
+                    <form action="interactions/add_comment.php" method="POST" onclick="preventClickPropagation(event)">
+                        <input type="hidden" name="post_id" value="<?php echo $post_id; ?>">
+                        <textarea name="comment_content" placeholder="Write a comment..." required
+                                  onclick="preventClickPropagation(event)"></textarea>
+                        <button type="submit" onclick="preventClickPropagation(event)">Post Comment</button>
+                    </form>
+                </div>
+            </div>
+        <?php endwhile; ?>
+    <?php else: ?>
+        <p>No posts to display.</p>
+    <?php endif; ?>
+</section>
+
     <!-- Posts and Comments -->
     <div class="container">
 
@@ -274,6 +339,7 @@ while ($row = $resultGroupPosts->fetch_assoc()) {
                 <?php while ($row = $resultMyPosts->fetch_assoc()): ?>
                     <div class="post" onclick="toggleCommentSection(this)">
                         <h3>Post by You</h3>
+                        <p style="font-size: 0.8em; color: #888;">Posted on: <?php echo htmlspecialchars($row['PostedAt']); ?></p>
                         <?php if (!empty($row['PostText'])): ?>
                             <p><?php echo htmlspecialchars($row['PostText']); ?></p>
                         <?php endif; ?>
@@ -341,6 +407,8 @@ while ($row = $resultGroupPosts->fetch_assoc()) {
                             ?>
                             <div class="post" style="position: relative;" onclick="toggleCommentSection(this)">
                                 <h4>Post by <?php echo htmlspecialchars($row['Username']); ?></h4>
+                                <p style="font-size: 0.8em; color: #888;">Posted on: <?php echo htmlspecialchars($row['PostedAt']); ?></p>
+
                                 <!-- "Contents and Permissions" button -->
                                 <?php if ($row['OwnerID'] == $memberID): ?>
                                     <button

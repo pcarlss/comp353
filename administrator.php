@@ -103,137 +103,140 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
             break;
 
-        case 'edit':
-            $edit_memberID = isset($_POST['memberID']) ? (int)$_POST['memberID'] : null;
-            if ($edit_memberID) {
-                $_SESSION['edit_memberID'] = $edit_memberID;
-            }
-            break;
-
-        case 'save':
-            $memberID = isset($_POST['memberID']) ? (int)$_POST['memberID'] : 0;
-            $username = trim($_POST['username'] ?? '');
-            $password = $_POST['password'] ?? null;
-            $firstName = trim($_POST['firstName'] ?? '');
-            $lastName = trim($_POST['lastName'] ?? '');
-            $email = trim($_POST['email'] ?? '');
-            $dateOfBirth = trim($_POST['dateOfBirth'] ?? '') ?: null;
-            $city = trim($_POST['city'] ?? '') ?: null;
-            $country = trim($_POST['country'] ?? '') ?: null;
-            $profession = trim($_POST['profession'] ?? '') ?: null;
-            $businessAccount = isset($_POST['businessAccount']) ? 1 : 0;
-            $privilege = $_POST['privilege'] ?? 'Junior';
-            $status = $_POST['status'] ?? 'Active';
-
-            if ($memberID > 0) {
-                $stmt_check = $conn->prepare("SELECT Privilege FROM Member WHERE MemberID = ?");
-                $currentPrivilege = '';
-                if ($stmt_check) {
-                    $stmt_check->bind_param("i", $memberID);
-                    if ($stmt_check->execute()) {
-                        $stmt_check->bind_result($currentPrivilege);
-                        $stmt_check->fetch();
-                    }
-                    $stmt_check->close();
-                }
-
-                if ($currentPrivilege === 'Administrator') {
-                    $privilege = 'Administrator';
-                }
-
-                if (validateMemberInput($username, $password, $firstName, $lastName, $email, true)) {
-                    if (isUniqueField('Username', $username, $memberID) && isUniqueField('Email', $email, $memberID)) {
-                        if (empty($password)) {
-                            $errors[] = "Password cannot be empty.";
-                            break;
-                        }
-
-                        if (strlen($password) > 45) {
-                            $errors[] = "Password must not exceed 45 characters.";
-                            break;
-                        }
-
-                        if (!validateDate($dateOfBirth)) {
-                            $errors[] = "Invalid Date of Birth. Please use the format YYYY-MM-DD.";
-                            break;
-                        }
-
-                        $query = "
-                            UPDATE Member SET 
-                                Username = ?, 
-                                FirstName = ?, 
-                                LastName = ?, 
-                                Email = ?, 
-                                DateOfBirth = ?, 
-                                City = ?, 
-                                Country = ?, 
-                                Profession = ?, 
-                                Privilege = ?, 
-                                Status = ?, 
-                                BusinessAccount = ?, 
-                                UserUpdatedAt = CURDATE()
-                        ";
-
-                        if (!empty($password)) {
-                            $query .= ", Password = ?";
-                        }
-
-                        $query .= " WHERE MemberID = ?";
-
-                        $stmt = $conn->prepare($query);
+            case 'edit':
+                $edit_memberID = isset($_POST['memberID']) ? (int)$_POST['memberID'] : null;
+            
+                if ($edit_memberID) {
+                    $_SESSION['edit_memberID'] = $edit_memberID;
+            
+                    // Ensure $members is populated
+                    if (empty($members)) {
+                        $stmt = $conn->prepare("SELECT MemberID, Password FROM Member");
                         if ($stmt) {
-                            if (!empty($password)) {
-                                $stmt->bind_param(
-                                    "sssssssssiis",
-                                    $username,
-                                    $firstName,
-                                    $lastName,
-                                    $email,
-                                    $dateOfBirth,
-                                    $city,
-                                    $country,
-                                    $profession,
-                                    $privilege,
-                                    $status,
-                                    $businessAccount,
-                                    $password,
-                                    $memberID
-                                );
-                            } else {
-                                $stmt->bind_param(
-                                    "ssssssssii",
-                                    $username,
-                                    $firstName,
-                                    $lastName,
-                                    $email,
-                                    $dateOfBirth,
-                                    $city,
-                                    $country,
-                                    $profession,
-                                    $privilege,
-                                    $status,
-                                    $businessAccount,
-                                    $memberID
-                                );
-                            }
-
                             if ($stmt->execute()) {
-                                $success = "Member '$username' updated successfully.";
-                                unset($_SESSION['edit_memberID']);
-                            } else {
-                                $errors[] = "Error during member update: " . htmlspecialchars($stmt->error);
+                                $result = $stmt->get_result();
+                                while ($row = $result->fetch_assoc()) {
+                                    $members[] = $row;
+                                }
                             }
                             $stmt->close();
-                        } else {
-                            $errors[] = "Database error: Unable to prepare update statement. " . htmlspecialchars($conn->error);
+                        }
+                    }
+            
+                    // Find and save the password for the selected member
+                    foreach ($members as $member) {
+                        if ((int)$member['MemberID'] === $edit_memberID) {
+                            $_SESSION['edit_password'] = $member['Password'];
+                            break;
                         }
                     }
                 }
-            } else {
-                $errors[] = "Invalid Member ID for editing.";
-            }
-            break;
+                break;            
+                                            
+                
 
+
+            case 'save':
+                    
+                    if (!isset($_SESSION['edit_memberID'])) {
+                        $errors[] = "Error";
+                        break;
+                    }
+                
+                    $memberID = $_SESSION['edit_memberID'];
+                
+             
+                    $username    = trim($_POST['username'] ?? '');
+                    $password    = trim($_POST['password'] ?? '');
+                    $firstName   = trim($_POST['firstName'] ?? '');
+                    $lastName    = trim($_POST['lastName'] ?? '');
+                    $email       = trim($_POST['email'] ?? '');
+                    $dateOfBirth = trim($_POST['dateOfBirth'] ?? '') ?: null;
+                    $city        = trim($_POST['city'] ?? '') ?: null;
+                    $country     = trim($_POST['country'] ?? '') ?: null;
+                    $profession  = trim($_POST['profession'] ?? '') ?: null;
+                    $privilege   = $_POST['privilege'] ?? 'Junior';
+                    $status      = $_POST['Status'] ?? 'Active';
+                
+                
+                    
+                    if (validateMemberInput($username, $password, $firstName, $lastName, $email, true)) {
+                        if (isUniqueField('Username', $username, $memberID) && isUniqueField('Email', $email, $memberID)) {
+                            
+                            
+                            if (empty($password)) {
+                                if (isset($_SESSION['edit_password'])) {
+                                    $password = $_SESSION['edit_password'];
+                                } else {
+                                    $errors[] = "Existing password not found. Please try editing again.";
+                                    break;
+                                }
+                            } else {
+            
+                                if (strlen($password) > 45) {
+                                    $errors[] = "Password must not exceed 45 characters.";
+                                    break;
+                                }
+                            }
+                
+                            $stmt = $conn->prepare("
+                                UPDATE Member 
+                                SET 
+                                    Username = ?, 
+                                    Password = ?, 
+                                    FirstName = ?, 
+                                    LastName = ?, 
+                                    Email = ?, 
+                                    DateOfBirth = ?, 
+                                    City = ?, 
+                                    Country = ?, 
+                                    Profession = ?, 
+                                    Privilege = ?, 
+                                    Status = ?, 
+                                    UserUpdatedAt = CURDATE()
+                                WHERE MemberID = ?
+                            ");
+                
+                            if ($stmt) {
+                                $stmt->bind_param(
+                                    "sssssssssssi",
+                                    $username,
+                                    $password,
+                                    $firstName,
+                                    $lastName,
+                                    $email,
+                                    $dateOfBirth,
+                                    $city,
+                                    $country,
+                                    $profession,
+                                    $privilege,
+                                    $status,
+                                    $memberID
+                                );
+                
+                                if ($stmt->execute()) {
+                                    $success = "Member '$username' updated successfully.";
+                                    
+                                    unset($_SESSION['edit_memberID']);
+                                    unset($_SESSION['edit_password']);
+                                } else {
+                                    $errors[] = "Error during member update: " . htmlspecialchars($stmt->error);
+                                }
+                
+                                $stmt->close();
+                            } else {
+                                $errors[] = "Database error: Unable to prepare update statement. " . htmlspecialchars($conn->error);
+                            }
+                        }
+                    }
+                    if (empty($errors)) { 
+   
+                        header("Location: administrator.php"); 
+                        exit(); 
+                    }
+                    break;
+                
+                   
         case 'accept_promotion':
             $memberID = isset($_POST['memberID']) ? (int)$_POST['memberID'] : 0;
             if ($memberID > 0) {
@@ -284,7 +287,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             break;
 
         case 'cancel_edit':
-            unset($_SESSION['edit_memberID']);
+                unset($_SESSION['edit_memberID']);
+                unset($_SESSION['edit_password']); // Clear the password as well if needed
+                header("Location: administrator.php"); // Redirect back to the same page
             break;
     }
 }
@@ -657,13 +662,6 @@ function validateDate($date) {
         }
     </style>
     <script>
-        window.addEventListener('beforeunload', function (e) {
-            const isEditing = <?php echo $edit_memberID ? 'true' : 'false'; ?>;
-            if (isEditing) {
-                e.preventDefault();
-                e.returnValue = '';
-            }
-        });
 
         window.addEventListener('DOMContentLoaded', (event) => {
             const passwordField = document.querySelector('input[name="password"]');
@@ -748,7 +746,7 @@ function validateDate($date) {
                                             <input type="text" name="username" value="<?php echo htmlspecialchars($member['Username']); ?>" required maxlength="45">
                                         </td>
                                         <td>
-                                            <input type="password" name="password" required maxlength="45" placeholder="Enter new password">
+                                           <input type="text" name="password" value="<?php echo htmlspecialchars($_SESSION['edit_password'] ?? ''); ?>" maxlength="45">
                                         </td>
                                         <td>
                                             <input type="text" name="firstName" value="<?php echo htmlspecialchars($member['FirstName']); ?>" required maxlength="45">
@@ -787,13 +785,21 @@ function validateDate($date) {
                                                 </select>
                                             <?php endif; ?>
                                         </td>
+                                        
                                         <td>
-                                            <select name="status">
-                                                <option value="Active" <?php echo ($member['Status'] === 'Active') ? 'selected' : ''; ?>>Active</option>
-                                                <option value="Inactive" <?php echo ($member['Status'] === 'Inactive') ? 'selected' : ''; ?>>Inactive</option>
-                                                <option value="Suspended" <?php echo ($member['Status'] === 'Suspended') ? 'selected' : ''; ?>>Suspended</option>
-                                            </select>
+                                            <?php if ($member['Privilege'] === 'Administrator'):  ?>
+                                                <select name="Status" disabled>
+                                                    <option value="Active" selected>Active</option>
+                                                </select>
+                                            <?php else: ?>
+                                                <select name="Status">
+                                                    <option value="Active" <?php echo ($member['Status'] === 'Active') ? 'selected' : ''; ?>>Active</option>
+                                                    <option value="Inactive" <?php echo ($member['Status'] === 'Inactive') ? 'selected' : ''; ?>>Inactive</option>
+                                                    <option value="Suspended" <?php echo ($member['Status'] === 'Suspended') ? 'selected' : ''; ?>>Suspended</option>
+                                                </select>
+                                            <?php endif; ?>
                                         </td>
+
                                         <td>
                                             <?php echo htmlspecialchars($member['UserCreatedAt']); ?>
                                         </td>

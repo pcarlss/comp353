@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Dec 05, 2024 at 04:48 PM
+-- Generation Time: Dec 05, 2024 at 05:59 PM
 -- Server version: 10.4.28-MariaDB
 -- PHP Version: 8.2.4
 
@@ -100,18 +100,6 @@ CREATE TABLE `EventOptions` (
   `EventID` int(50) NOT NULL,
   `Date_Time_Location` varchar(50) NOT NULL,
   `Votes` int(50) NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `Fee`
---
-
-CREATE TABLE `Fee` (
-  `FeeID` int(50) NOT NULL,
-  `MemberID` int(50) NOT NULL,
-  `Amount` decimal(10,2) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -250,14 +238,6 @@ CREATE TRIGGER `after_member_insert` AFTER INSERT ON `Member` FOR EACH ROW BEGIN
 END
 $$
 DELIMITER ;
-DELIMITER $$
-CREATE TRIGGER `after_member_insert_fee` AFTER INSERT ON `Member` FOR EACH ROW BEGIN
-    IF NEW.BusinessAccount = 1 THEN
-        INSERT INTO Fee (MemberID, Amount) VALUES (NEW.MemberID, 0.00);
-    END IF;
-END
-$$
-DELIMITER ;
 
 -- --------------------------------------------------------
 
@@ -389,13 +369,6 @@ ALTER TABLE `Event`
 ALTER TABLE `EventOptions`
   ADD PRIMARY KEY (`OptionID`),
   ADD KEY `EventID` (`EventID`);
-
---
--- Indexes for table `Fee`
---
-ALTER TABLE `Fee`
-  ADD PRIMARY KEY (`FeeID`),
-  ADD KEY `MemberID` (`MemberID`);
 
 --
 -- Indexes for table `FriendOrGroupRequest`
@@ -536,12 +509,6 @@ ALTER TABLE `EventOptions`
   MODIFY `OptionID` int(50) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `Fee`
---
-ALTER TABLE `Fee`
-  MODIFY `FeeID` int(50) NOT NULL AUTO_INCREMENT;
-
---
 -- AUTO_INCREMENT for table `FriendOrGroupRequest`
 --
 ALTER TABLE `FriendOrGroupRequest`
@@ -663,12 +630,6 @@ ALTER TABLE `Event`
 --
 ALTER TABLE `EventOptions`
   ADD CONSTRAINT `eventoptions_ibfk_1` FOREIGN KEY (`EventID`) REFERENCES `Event` (`EventID`) ON DELETE CASCADE ON UPDATE CASCADE;
-
---
--- Constraints for table `Fee`
---
-ALTER TABLE `Fee`
-  ADD CONSTRAINT `fee_ibfk_1` FOREIGN KEY (`MemberID`) REFERENCES `Member` (`MemberID`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `FriendOrGroupRequest`

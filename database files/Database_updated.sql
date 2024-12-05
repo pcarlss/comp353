@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Dec 03, 2024 at 11:27 AM
+-- Generation Time: Dec 05, 2024 at 04:48 PM
 -- Server version: 10.4.28-MariaDB
 -- PHP Version: 8.2.4
 
@@ -18,7 +18,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Database: `mnmnnmmn`
+-- Database: `updaaaaate`
 --
 
 -- --------------------------------------------------------
@@ -45,6 +45,19 @@ CREATE TABLE `Blocked` (
   `BlockedID` int(50) NOT NULL,
   `MemberID1` int(50) NOT NULL,
   `MemberID2` int(50) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `BusinessVote`
+--
+
+CREATE TABLE `BusinessVote` (
+  `VoteID` int(50) NOT NULL,
+  `VoterID` int(50) NOT NULL,
+  `BusinessMemberID` int(50) NOT NULL,
+  `VotedAt` datetime NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -87,6 +100,18 @@ CREATE TABLE `EventOptions` (
   `EventID` int(50) NOT NULL,
   `Date_Time_Location` varchar(50) NOT NULL,
   `Votes` int(50) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `Fee`
+--
+
+CREATE TABLE `Fee` (
+  `FeeID` int(50) NOT NULL,
+  `MemberID` int(50) NOT NULL,
+  `Amount` decimal(10,2) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -214,7 +239,7 @@ CREATE TABLE `Member` (
 --
 
 INSERT INTO `Member` (`MemberID`, `Username`, `Password`, `FirstName`, `LastName`, `DateOfBirth`, `City`, `Country`, `Email`, `Profession`, `Privilege`, `Status`, `BusinessAccount`, `UserCreatedAt`, `UserUpdatedAt`, `ProfilePic`) VALUES
-(1, 'testuser', 'testpassword', 'Test', 'User', NULL, NULL, NULL, 'testuser@example.com', NULL, 'Administrator', 'Active', 0, '2024-11-06', '2024-11-06', 'uploads/images/default_pfp.png');
+(1, 'admin', 'admin', 'Test', 'User', NULL, NULL, NULL, 'testuser@example.com', NULL, 'Administrator', 'Active', 0, '2024-11-06', '2024-11-06', 'uploads/images/default_pfp.png');
 
 --
 -- Triggers `Member`
@@ -222,6 +247,14 @@ INSERT INTO `Member` (`MemberID`, `Username`, `Password`, `FirstName`, `LastName
 DELIMITER $$
 CREATE TRIGGER `after_member_insert` AFTER INSERT ON `Member` FOR EACH ROW BEGIN
     INSERT INTO Privacy (PrivacyID) VALUES (NEW.MemberID);
+END
+$$
+DELIMITER ;
+DELIMITER $$
+CREATE TRIGGER `after_member_insert_fee` AFTER INSERT ON `Member` FOR EACH ROW BEGIN
+    IF NEW.BusinessAccount = 1 THEN
+        INSERT INTO Fee (MemberID, Amount) VALUES (NEW.MemberID, 0.00);
+    END IF;
 END
 $$
 DELIMITER ;
@@ -237,7 +270,9 @@ CREATE TABLE `Message` (
   `MemberID1` int(50) NOT NULL,
   `MemberID2` int(50) NOT NULL,
   `MessageContent` text NOT NULL,
-  `SentAt` datetime NOT NULL
+  `SentAt` datetime NOT NULL,
+  `MediaType` enum('None','Image','Video') NOT NULL DEFAULT 'None',
+  `MediaPath` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -325,6 +360,14 @@ ALTER TABLE `Blocked`
   ADD KEY `MemberID2` (`MemberID2`);
 
 --
+-- Indexes for table `BusinessVote`
+--
+ALTER TABLE `BusinessVote`
+  ADD PRIMARY KEY (`VoteID`),
+  ADD KEY `VoterID` (`VoterID`),
+  ADD KEY `BusinessMemberID` (`BusinessMemberID`);
+
+--
 -- Indexes for table `Comment`
 --
 ALTER TABLE `Comment`
@@ -346,6 +389,13 @@ ALTER TABLE `Event`
 ALTER TABLE `EventOptions`
   ADD PRIMARY KEY (`OptionID`),
   ADD KEY `EventID` (`EventID`);
+
+--
+-- Indexes for table `Fee`
+--
+ALTER TABLE `Fee`
+  ADD PRIMARY KEY (`FeeID`),
+  ADD KEY `MemberID` (`MemberID`);
 
 --
 -- Indexes for table `FriendOrGroupRequest`
@@ -462,6 +512,12 @@ ALTER TABLE `Blocked`
   MODIFY `BlockedID` int(50) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `BusinessVote`
+--
+ALTER TABLE `BusinessVote`
+  MODIFY `VoteID` int(50) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `Comment`
 --
 ALTER TABLE `Comment`
@@ -478,6 +534,12 @@ ALTER TABLE `Event`
 --
 ALTER TABLE `EventOptions`
   MODIFY `OptionID` int(50) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `Fee`
+--
+ALTER TABLE `Fee`
+  MODIFY `FeeID` int(50) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `FriendOrGroupRequest`
@@ -576,6 +638,13 @@ ALTER TABLE `Blocked`
   ADD CONSTRAINT `blocked_ibfk_2` FOREIGN KEY (`MemberID2`) REFERENCES `Member` (`MemberID`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
+-- Constraints for table `BusinessVote`
+--
+ALTER TABLE `BusinessVote`
+  ADD CONSTRAINT `businessvote_ibfk_1` FOREIGN KEY (`VoterID`) REFERENCES `Member` (`MemberID`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `businessvote_ibfk_2` FOREIGN KEY (`BusinessMemberID`) REFERENCES `Member` (`MemberID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
 -- Constraints for table `Comment`
 --
 ALTER TABLE `Comment`
@@ -594,6 +663,12 @@ ALTER TABLE `Event`
 --
 ALTER TABLE `EventOptions`
   ADD CONSTRAINT `eventoptions_ibfk_1` FOREIGN KEY (`EventID`) REFERENCES `Event` (`EventID`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `Fee`
+--
+ALTER TABLE `Fee`
+  ADD CONSTRAINT `fee_ibfk_1` FOREIGN KEY (`MemberID`) REFERENCES `Member` (`MemberID`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `FriendOrGroupRequest`
@@ -673,17 +748,6 @@ ALTER TABLE `Vote`
   ADD CONSTRAINT `vote_ibfk_1` FOREIGN KEY (`VoterID`) REFERENCES `Member` (`MemberID`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `vote_ibfk_2` FOREIGN KEY (`SelectedOptionID`) REFERENCES `EventOptions` (`OptionID`) ON DELETE CASCADE ON UPDATE CASCADE;
 COMMIT;
-
-CREATE TABLE BusinessVote (
-  VoteID int(50) NOT NULL AUTO_INCREMENT,
-  VoterID int(50) NOT NULL,
-  BusinessMemberID int(50) NOT NULL,
-  VotedAt datetime NOT NULL,
-  PRIMARY KEY (VoteID),
-  FOREIGN KEY (VoterID) REFERENCES Member(MemberID) ON DELETE CASCADE ON UPDATE CASCADE,
-  FOREIGN KEY (BusinessMemberID) REFERENCES Member(MemberID) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;

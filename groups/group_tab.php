@@ -522,8 +522,8 @@ function showAddMemberForm(groupId) {
         if ($isOwner || $hasAdminPrivileges) {
                     // Show "Details" and "Edit" buttons for administrators or owners
                     echo "<div>";
-                    echo "<button onclick=\"viewGroupDetails($groupId)\">Details</button>";
-                    echo "<button onclick=\"toggleEditGroupForm($groupId, '$groupName')\">Edit</button>";
+                    echo "<button style='margin-right: 10px;' onclick=\"viewGroupDetails($groupId)\">Details</button>";
+                    echo "<button style='margin-right: 10px;' onclick=\"toggleEditGroupForm($groupId, '$groupName')\">Edit</button>";
                     echo "<button class='btn-danger' onclick=\"deleteGroup($groupId)\">Delete</button>";
 
                     if ($isOwner) {
@@ -533,8 +533,8 @@ function showAddMemberForm(groupId) {
                 } elseif ($isMember) {
                     echo "<p>You are a member of this group</p>";
                     // Show "Leave Group" button for members
-                    echo "<button onclick=\"leaveGroup($groupId, this)\">Leave Group</button>";
-                    echo "<button onclick=\"viewGroupDetails($groupId)\">Details</button>";
+                    echo "<button style='margin-right: 10px;' onclick=\"leaveGroup($groupId, this)\">Leave Group</button>";
+                    echo "<button style='margin-right: 10px;' onclick=\"viewGroupDetails($groupId)\">Details</button>";
                 } else {
                     // Show "Request to Join" button for non-members
                     echo "<button onclick=\"requestToJoin($groupId, this)\">Request to Join</button>";

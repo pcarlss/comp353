@@ -2,20 +2,19 @@
 require 'session/db_connect.php';
 session_start();
 
-// Error Reporting Configuration
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 ini_set('error_log', '/path/to/your/php-error.log'); 
 error_reporting(E_ALL);
 
-// Initialize Variables
+
 $errors = [];
 $success = '';
 $firstName = $lastName = $email = $dob = $city = $country = $profession = $status = '';
 $businessAccount = 'Personal';
 $profilePic = 'uploads/images/default_pfp.png'; 
 
-// Retrieve Session Messages
+
 if (isset($_SESSION['errors'])) {
     $errors = $_SESSION['errors'];
     unset($_SESSION['errors']);
@@ -26,17 +25,17 @@ if (isset($_SESSION['success'])) {
     unset($_SESSION['success']);
 }
 
-// Check if User is Logged In
+
 if (!empty($_SESSION['username'])) {
     $username = $_SESSION['username'];
 
-    // Handle POST Requests
+    
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $action = $_POST['action'];
 
-        // **A. Handle Privacy Updates via AJAX**
+        
         if ($action === 'update_privacy') {
-            // Ensure the user is authenticated
+            
             if (empty($_SESSION['username'])) {
                 echo json_encode(['success' => false, 'message' => 'User not authenticated.']);
                 exit();
@@ -45,7 +44,7 @@ if (!empty($_SESSION['username'])) {
             $field = $_POST['field'] ?? '';
             $value = $_POST['value'] ?? '';
 
-            // Define Allowed Privacy Fields
+            
             $allowed_fields = [
                 'Fname'      => 'Fname',
                 'Lname'      => 'Lname',
@@ -56,19 +55,19 @@ if (!empty($_SESSION['username'])) {
                 'pStatus'    => 'pStatus'
             ];
 
-            // Validate Field
+            
             if (!array_key_exists($field, $allowed_fields)) {
                 echo json_encode(['success' => false, 'message' => 'Invalid privacy field.']);
                 exit();
             }
 
-            // Validate Value
+            
             if (!in_array($value, ['0', '1'])) {
                 echo json_encode(['success' => false, 'message' => 'Invalid value for privacy setting.']);
                 exit();
             }
 
-            // Fetch MemberID
+            
             $memberIdQuery = "SELECT MemberID FROM Member WHERE Username = ?";
             $memberIdStmt = $conn->prepare($memberIdQuery);
             if (!$memberIdStmt) {
@@ -86,7 +85,7 @@ if (!empty($_SESSION['username'])) {
             }
             $memberIdStmt->close();
 
-            // Update Privacy Setting
+            
             $updateQuery = "UPDATE Privacy SET {$allowed_fields[$field]} = ? WHERE PrivacyID = ?";
             $updateStmt = $conn->prepare($updateQuery);
             if (!$updateStmt) {
@@ -105,13 +104,13 @@ if (!empty($_SESSION['username'])) {
             exit();
         }
 
-        // **B. Handle Promotion Requests**
+        
         elseif ($action === 'request_promotion') {
-            // Ensure the user is a Junior member
+            
             if ($_SESSION['Privilege'] !== 'Junior') {
                 $errors[] = "Only Junior members can request a promotion.";
             } else {
-                // Fetch MemberID
+                
                 $query = "SELECT MemberID FROM Member WHERE Username = ?";
                 $stmt = $conn->prepare($query);
                 if ($stmt) {
@@ -123,7 +122,7 @@ if (!empty($_SESSION['username'])) {
                     }
                     $stmt->close();
 
-                    // Check for Existing Promotion Request
+                    
                     $checkQuery = "SELECT COUNT(*) FROM PromotionRequests WHERE MemberID = ?";
                     $stmt = $conn->prepare($checkQuery);
                     if ($stmt) {
@@ -136,7 +135,7 @@ if (!empty($_SESSION['username'])) {
                         if ($count > 0) {
                             $errors[] = "You already have a pending promotion request.";
                         } else {
-                            // Insert Promotion Request
+                            
                             $insertQuery = "INSERT INTO PromotionRequests (MemberID) VALUES (?)";
                             $stmt = $conn->prepare($insertQuery);
                             if ($stmt) {
@@ -159,7 +158,7 @@ if (!empty($_SESSION['username'])) {
                 }
             }
 
-            // Redirect with Success or Error Messages
+            
             if (!empty($errors)) {
                 $_SESSION['errors'] = $errors;
                 header("Location: profile.php");
@@ -170,21 +169,9 @@ if (!empty($_SESSION['username'])) {
                 exit();
             }
         }
-
-        // **C. Handle Profile Picture Upload**
-        elseif ($action === 'upload_picture') {
-            // Profile picture upload logic is handled below
-            // This block can be omitted if handled separately
-        }
-
-        // **D. Handle Profile Field Updates**
-        elseif ($action === 'update_field') {
-            // Profile field update logic is handled below
-            // This block can be omitted if handled separately
-        }
     }
 
-    // **C. Handle Profile Picture Upload (Continued)**
+    
     if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['upload_picture'])) {
         $maxFileSize = 5 * 1024 * 1024; // 5MB
 
@@ -192,47 +179,47 @@ if (!empty($_SESSION['username'])) {
             $file = $_FILES['profile_picture'];
             $fileSize = $file['size'];
 
-            // Validate File Size
+            
             if ($fileSize > $maxFileSize) {
                 $errors[] = "File size must be less than 5MB.";
             }
 
-            // Validate Image File
+            
             $check = getimagesize($file['tmp_name']);
             if ($check !== false) {
                 $fileExtension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
                 $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif'];
 
-                // Validate File Extension
+            
                 if (!in_array($fileExtension, $allowedExtensions)) {
                     $errors[] = "Invalid file type. Only JPG, JPEG, PNG, and GIF are allowed.";
                 }
 
-                // Generate Unique File Name
+                
                 $newFileName = uniqid('pfp_', true) . '.' . $fileExtension;
 
-                // Define Upload Paths
+                
                 $uploadDir = __DIR__ . '/uploads/images/';
                 $relativeDir = 'uploads/images/';
                 $uploadPath = $uploadDir . $newFileName;
                 $relativePath = $relativeDir . $newFileName;
 
-                // Create Upload Directory if Not Exists
+                
                 if (!file_exists($uploadDir)) {
                     if (!mkdir($uploadDir, 0755, true)) {
                         $errors[] = "Failed to create directory for uploads.";
                     }
                 }
 
-                // Check if Upload Directory is Writable
+                
                 if (!is_writable($uploadDir)) {
                     $errors[] = "Upload directory is not writable.";
                 }
 
-                // Move Uploaded File
+                
                 if (empty($errors)) {
                     if (move_uploaded_file($file['tmp_name'], $uploadPath)) {
-                        // Update Database with New Profile Picture
+                        
                         $stmt = $conn->prepare("UPDATE Member SET ProfilePic = ?, UserUpdatedAt = NOW() WHERE Username = ?");
                         if (!$stmt) {
                             $errors[] = "Database error: " . $conn->error;
@@ -257,7 +244,7 @@ if (!empty($_SESSION['username'])) {
             $errors[] = "No file uploaded or there was an upload error.";
         }
 
-        // Redirect with Success or Error Messages
+        
         if (!empty($errors)) {
             $_SESSION['errors'] = $errors;
             header("Location: profile.php");
@@ -269,7 +256,7 @@ if (!empty($_SESSION['username'])) {
         }
     }
 
-    // **D. Handle Profile Field Updates (Continued)**
+    
     if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['field']) && !isset($_POST['upload_picture'])) {
         $field = $_POST['field'];
         $value = trim($_POST['value']);
@@ -287,22 +274,22 @@ if (!empty($_SESSION['username'])) {
         if (array_key_exists($field, $allowed_fields)) {
             $db_field = $allowed_fields[$field];
 
-            // Validate Required Fields
+            
             if (in_array($field, ['firstname', 'lastname', 'email']) && empty($value)) {
                 $errors[] = ucfirst($field) . " is required.";
             }
 
-            // Validate Field Length
+        
             if (strlen($value) > 45) {
                 $errors[] = ucfirst($field) . " must not exceed 45 characters.";
             }
 
-            // Validate Email Format and Uniqueness
+            
             if ($field === 'email') {
                 if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
                     $errors[] = "Please enter a valid email address.";
                 } else {
-                    // Check Email Uniqueness
+                    
                     $stmt = $conn->prepare("SELECT Username FROM Member WHERE Email = ? AND Username != ?");
                     if (!$stmt) {
                         $errors[] = "Database error: " . $conn->error;
@@ -318,7 +305,6 @@ if (!empty($_SESSION['username'])) {
                 }
             }
 
-            // Validate Date of Birth Format
             if ($field === 'dob' && !empty($value)) {
                 $dateParts = explode('-', $value);
                 if (
@@ -328,13 +314,13 @@ if (!empty($_SESSION['username'])) {
                     is_numeric($dateParts[2]) &&
                     checkdate((int)$dateParts[1], (int)$dateParts[2], (int)$dateParts[0])
                 ) {
-                    // Valid Date
+                    
                 } else {
                     $errors[] = "Invalid date format or date does not exist. Please enter a valid date (YYYY-MM-DD).";
                 }
             }
 
-            // If No Errors, Update the Profile Field
+            
             if (empty($errors)) {
                 $stmt = $conn->prepare("UPDATE Member SET $db_field = ?, UserUpdatedAt = NOW() WHERE Username = ?");
                 if (!$stmt) {
@@ -350,7 +336,6 @@ if (!empty($_SESSION['username'])) {
                 }
             }
 
-            // Redirect with Success or Error Messages
             if (!empty($errors)) {
                 $_SESSION['errors'] = $errors;
                 header("Location: profile.php");
@@ -368,7 +353,6 @@ if (!empty($_SESSION['username'])) {
         }
     }
 
-    // **Fetch User Data**
     $query = "SELECT MemberID, FirstName, LastName, Email, DateOfBirth, City, Country, Profession, BusinessAccount, ProfilePic, Privilege, Status 
               FROM Member 
               WHERE Username = ?";
@@ -406,7 +390,6 @@ if (!empty($_SESSION['username'])) {
         $stmt->close();
     }
 
-    // **Fetch Privacy Settings**
     $privacyQuery = "SELECT Fname, Lname, BirthDate, pCity, pCountry, Work, pStatus FROM Privacy WHERE PrivacyID = ?";
     $privacyStmt = $conn->prepare($privacyQuery);
     if ($privacyStmt) {
@@ -444,14 +427,14 @@ $conn->close();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Profile Page</title>
     <style>
-        /* Basic reset */
+        
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
-        /* Layout and styling */
+        
         body {
             display: flex;
             justify-content: center;
@@ -463,7 +446,6 @@ $conn->close();
             padding-top: 60px;
         }
 
-        /* Top Bar Styling */
         .top-bar {
             position: fixed;
             top: 0;
@@ -506,7 +488,6 @@ $conn->close();
             background-color: #ddd;
         }
 
-        /* Profile Container */
         .container {
             display: flex;
             flex-direction: column;
@@ -527,7 +508,6 @@ $conn->close();
             color: #333;
         }
 
-        /* Profile Picture Section */
         .profile-picture {
             display: flex;
             flex-direction: column;
@@ -582,10 +562,10 @@ $conn->close();
     font-weight: normal; 
 }
 
-        /* Profile Item Styling */
+        
         .profile-item {
             display: grid;
-            grid-template-columns: 1fr 2fr 200px 100px; /* Added column for privacy checkbox */
+            grid-template-columns: 1fr 2fr 200px 100px; 
             align-items: center;
             gap: 10px;
             margin-bottom: 10px;
@@ -635,7 +615,6 @@ $conn->close();
             background-color: #6caad3;
         }
 
-        /* Privacy Checkbox Styling */
         .privacy-checkbox-container {
             display: flex;
             align-items: center;
@@ -687,10 +666,9 @@ $conn->close();
             color: #155724;
         }
 
-        /* Responsive Design */
         @media (max-width: 600px) {
             .profile-item {
-                grid-template-columns: 1fr 2fr 150px 80px; /* Adjust columns for smaller screens */
+                grid-template-columns: 1fr 2fr 150px 80px; 
             }
 
             .top-bar .button-container {
@@ -699,14 +677,13 @@ $conn->close();
             }
 
             .top-bar button {
-                width: 100%; /* Buttons take full width on small screens */
+                width: 100%; 
             }
             
 
         }
     </style>
 
-    <!-- JavaScript -->
     <script>
         function toggleEdit(field) {
             const profileField = document.getElementById('profile-' + field);
@@ -715,12 +692,10 @@ $conn->close();
             const cancelButton = document.getElementById(field + '-cancel-button');
             const editButton = document.getElementById(field + '-edit-button');
 
-            // Show input field and Save/Cancel buttons
             editField.style.display = "block";
             saveButton.style.display = "inline-block";
             cancelButton.style.display = "inline-block";
 
-            // Hide the profile field and Edit button
             profileField.style.display = "none";
             editButton.style.display = "none";
         }
@@ -729,21 +704,17 @@ $conn->close();
             const editField = document.getElementById('edit-' + field);
             const newValue = editField.value.trim();
 
-            // For 'dob' field, validate the date format (YYYY-MM-DD)
             if (field === 'dob' && !/^\d{4}-\d{2}-\d{2}$/.test(newValue)) {
                 displayErrorMessage("Please enter a valid date in the format YYYY-MM-DD.");
                 return;
             }
 
-            // For email field, check uniqueness before submitting
             if (field === 'email') {
                 checkEmailUniqueness(newValue)
                     .then(isUnique => {
                         if (isUnique) {
-                            // Proceed to submit the form
                             submitProfileForm(field, newValue);
                         } else {
-                            // Display error message
                             displayErrorMessage('This email address is already registered to another account.');
                         }
                     })
@@ -752,7 +723,6 @@ $conn->close();
                         displayErrorMessage('An error occurred while checking the email.');
                     });
             } else {
-                // For other fields, submit the form directly
                 submitProfileForm(field, newValue);
             }
         }
@@ -764,16 +734,13 @@ $conn->close();
             const cancelButton = document.getElementById(field + '-cancel-button');
             const editButton = document.getElementById(field + '-edit-button');
 
-            // Hide input and Save/Cancel buttons
             editField.style.display = "none";
             saveButton.style.display = "none";
             cancelButton.style.display = "none";
 
-            // Show the profile field and Edit button
             profileField.style.display = "inline";
             editButton.style.display = "inline";
 
-            // Reset the input value to the original value from the profile field
             editField.value = profileField.textContent.trim();
         }
 
@@ -802,7 +769,6 @@ $conn->close();
         }
 
         function displayErrorMessage(message) {
-            // Create or update the error message div
             let errorDiv = document.querySelector('.message.error');
             if (!errorDiv) {
                 errorDiv = document.createElement('div');
@@ -811,7 +777,6 @@ $conn->close();
             }
             errorDiv.innerHTML = '<p>' + message + '</p>';
 
-            // Set timeout to remove the error message
             setTimeout(function () {
                 if (errorDiv) {
                     errorDiv.style.transition = 'opacity 0.5s';
@@ -833,7 +798,6 @@ $conn->close();
             successDiv.innerHTML = `<p>${message}</p>`;
             successDiv.style.display = 'block';
 
-            // Hide after 3 seconds
             setTimeout(() => {
                 successDiv.style.transition = 'opacity 0.5s';
                 successDiv.style.opacity = '0';
@@ -843,9 +807,7 @@ $conn->close();
             }, 3000);
         }
 
-        // Remove messages after 3 seconds
         window.onload = function () {
-            // Set timeout to remove messages
             setTimeout(function () {
                 let messages = document.querySelectorAll('.message');
                 messages.forEach(function (message) {
@@ -853,27 +815,26 @@ $conn->close();
                     message.style.opacity = '0';
                     setTimeout(function () {
                         message.remove();
-                    }, 500); // Wait for the fade-out transition to complete
+                    }, 500); 
                 });
-            }, 3000); // 3000 milliseconds = 3 seconds
+            }, 3000); 
         };
 
         function handleDateInput(input) {
-            let value = input.value.replace(/[^0-9]/g, ""); // Remove non-numeric characters
+            let value = input.value.replace(/[^0-9]/g, ""); 
 
-            // Dynamically format to YYYY-MM-DD
             let formattedValue = "";
             if (value.length > 0) {
-                formattedValue += value.substring(0, 4); // Year
+                formattedValue += value.substring(0, 4); 
             }
             if (value.length > 4) {
-                formattedValue += "-" + value.substring(4, 6); // Month
+                formattedValue += "-" + value.substring(4, 6); 
             }
             if (value.length > 6) {
-                formattedValue += "-" + value.substring(6, 8); // Day
+                formattedValue += "-" + value.substring(6, 8); 
             }
 
-            input.value = formattedValue; // Update input value
+            input.value = formattedValue; 
         }
 
         document.addEventListener('DOMContentLoaded', function () {
@@ -882,12 +843,10 @@ $conn->close();
             const field = this.getAttribute('data-field');
             const value = this.checked ? 1 : 0;
 
-            // Create an AJAX request
             const xhr = new XMLHttpRequest();
             xhr.open('POST', 'profile.php', true);
             xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
 
-            // Define what happens on successful data submission
             xhr.onload = function () {
                 if (xhr.status === 200) {
                     try {
@@ -896,24 +855,24 @@ $conn->close();
                             displaySuccessMessage(response.message);
                         } else {
                             displayErrorMessage(response.message);
-                            checkbox.checked = !checkbox.checked; // Revert on error
+                            checkbox.checked = !checkbox.checked; 
                         }
                     } catch (e) {
                         console.error('Invalid JSON response');
                     }
                 } else {
                     console.error('Request failed. Status:', xhr.status);
-                    checkbox.checked = !checkbox.checked; // Revert on failure
+                    checkbox.checked = !checkbox.checked; 
                 }
             };
 
-            // Define what happens in case of error
+            
             xhr.onerror = function () {
                 console.error('Request error...');
-                checkbox.checked = !checkbox.checked; // Revert on failure
+                checkbox.checked = !checkbox.checked; 
             };
 
-            // Send the data
+            
             const params = `action=update_privacy&field=${encodeURIComponent(field)}&value=${encodeURIComponent(value)}`;
             xhr.send(params);
         });
@@ -925,7 +884,7 @@ $conn->close();
 
 <body>
 
-    <!-- Top Bar -->
+   
     <div class="top-bar">
         <h1>Account</h1>
         <a href="index.php"><button>
@@ -937,13 +896,14 @@ $conn->close();
             <?php if ($isAdmin): ?>
                 <a href="administrator.php"><button><h3>Admin Panel</h3></button></a>
             <?php endif; ?>
+            <?php if ($businessAccount === 'Business'): ?>
+                <a href="fee.php"><button><h3>Fee</h3></button></a>
+            <?php endif; ?>
             <a href="session/signout.php"><button>
                 <h3>Sign Out</h3>
             </button></a>
         </div>
 
-
-    <!-- Profile Content -->
     <div class="container">
         <h2>Profile Information</h2>
         
@@ -953,8 +913,6 @@ $conn->close();
 </div>
 
 
-
-        <!-- Display Error Messages -->
         <?php if (!empty($errors)): ?>
         <div class="message error">
             <?php foreach ($errors as $error): ?>
@@ -963,18 +921,15 @@ $conn->close();
         </div>
         <?php endif; ?>
 
-        <!-- Display Success Message -->
         <?php if (!empty($success)): ?>
         <div class="message success">
             <p><?php echo htmlspecialchars($success); ?></p>
         </div>
         <?php endif; ?>
 
-        <!-- Profile Picture Section -->
         <div class="profile-picture">
             <img id="profile-picture" src="<?php echo htmlspecialchars($profilePic); ?>" alt="Profile Picture">
             <form id="profilePicForm" method="POST" action="profile.php" enctype="multipart/form-data">
-                <!-- Hidden input to indicate picture upload -->
                 <input type="hidden" name="upload_picture" value="1">
                 <input type="file" name="profile_picture" id="profile_picture_input" accept="image/*"
                     onchange="document.getElementById('profilePicForm').submit();">
@@ -982,38 +937,31 @@ $conn->close();
             </form>
         </div>
 
-        <!-- Hidden Form for Updating Profile -->
         <form id="profileForm" method="POST" action="profile.php">
             <input type="hidden" name="field" id="field">
             <input type="hidden" name="value" id="value">
         </form>
 
-        <!-- First Name -->
         <div class="profile-item">
             <p>First Name:</p>
             <span id="profile-firstname"><?php echo htmlspecialchars($firstName); ?></span>
             <input id="edit-firstname" type="text" maxlength="45" value="<?php echo htmlspecialchars($firstName); ?>"
                 style="display: none;">
 
-            <!-- Edit and Action Buttons Container -->
             <div class="button-group">
-                <!-- Edit Button -->
                 <button type="button" id="firstname-edit-button" onclick="toggleEdit('firstname')">
                     Edit
                 </button>
 
-                <!-- Save Button -->
                 <button type="button" id="firstname-save-button" onclick="saveEdit('firstname')" style="display: none;">
                     Save
                 </button>
 
-                <!-- Cancel Button -->
                 <button type="button" id="firstname-cancel-button" onclick="cancelEdit('firstname')" style="display: none;">
                     Cancel
                 </button>
             </div>
 
-            <!-- Privacy Checkbox -->
             <div class="privacy-checkbox-container">
                 <input type="checkbox" class="privacy-checkbox" data-field="Fname"
                     <?php echo ($userPrivacy['Fname'] ? 'checked' : ''); ?> id="privacy-fname">
@@ -1021,32 +969,26 @@ $conn->close();
             </div>
         </div>
 
-        <!-- Last Name -->
         <div class="profile-item">
             <p>Last Name:</p>
             <span id="profile-lastname"><?php echo htmlspecialchars($lastName); ?></span>
             <input id="edit-lastname" type="text" maxlength="45" value="<?php echo htmlspecialchars($lastName); ?>"
                 style="display: none;">
 
-            <!-- Edit and Action Buttons Container -->
             <div class="button-group">
-                <!-- Edit Button -->
                 <button type="button" id="lastname-edit-button" onclick="toggleEdit('lastname')">
                     Edit
                 </button>
 
-                <!-- Save Button -->
                 <button type="button" id="lastname-save-button" onclick="saveEdit('lastname')" style="display: none;">
                     Save
                 </button>
 
-                <!-- Cancel Button -->
                 <button type="button" id="lastname-cancel-button" onclick="cancelEdit('lastname')" style="display: none;">
                     Cancel
                 </button>
             </div>
 
-            <!-- Privacy Checkbox -->
             <div class="privacy-checkbox-container">
                 <input type="checkbox" class="privacy-checkbox" data-field="Lname"
                     <?php echo ($userPrivacy['Lname'] ? 'checked' : ''); ?> id="privacy-lname">
@@ -1054,63 +996,50 @@ $conn->close();
             </div>
         </div>
 
-        <!-- Email -->
         <div class="profile-item">
             <p>Email:</p>
             <span id="profile-email"><?php echo htmlspecialchars($email); ?></span>
             <input id="edit-email" type="email" maxlength="45" value="<?php echo htmlspecialchars($email); ?>"
                 style="display: none;">
 
-            <!-- Edit and Action Buttons Container -->
             <div class="button-group">
-                <!-- Edit Button -->
                 <button type="button" id="email-edit-button" onclick="toggleEdit('email')">
                     Edit
                 </button>
 
-                <!-- Save Button -->
                 <button type="button" id="email-save-button" onclick="saveEdit('email')" style="display: none;">
                     Save
                 </button>
 
-                <!-- Cancel Button -->
                 <button type="button" id="email-cancel-button" onclick="cancelEdit('email')" style="display: none;">
                     Cancel
                 </button>
             </div>
 
-            <!-- No Privacy Checkbox for Email -->
             <div class="privacy-checkbox-container">
-                <!-- Empty to maintain grid alignment -->
             </div>
         </div>
 
-        <!-- Date of Birth -->
         <div class="profile-item">
             <p>Date of Birth:</p>
             <span id="profile-dob"><?php echo htmlspecialchars($dob); ?></span>
             <input id="edit-dob" type="text" placeholder="YYYY-MM-DD" maxlength="10"
                 value="<?php echo htmlspecialchars($dob); ?>" oninput="handleDateInput(this)" style="display: none;">
 
-            <!-- Edit and Action Buttons Container -->
             <div class="button-group">
-                <!-- Edit Button -->
                 <button type="button" id="dob-edit-button" onclick="toggleEdit('dob')">
                     Edit
                 </button>
 
-                <!-- Save Button -->
                 <button type="button" id="dob-save-button" onclick="saveEdit('dob')" style="display: none;">
                     Save
                 </button>
 
-                <!-- Cancel Button -->
                 <button type="button" id="dob-cancel-button" onclick="cancelEdit('dob')" style="display: none;">
                     Cancel
                 </button>
             </div>
 
-            <!-- Privacy Checkbox -->
             <div class="privacy-checkbox-container">
                 <input type="checkbox" class="privacy-checkbox" data-field="BirthDate"
                     <?php echo ($userPrivacy['BirthDate'] ? 'checked' : ''); ?> id="privacy-birthdate">
@@ -1118,32 +1047,26 @@ $conn->close();
             </div>
         </div>
 
-        <!-- City -->
         <div class="profile-item">
             <p>City:</p>
             <span id="profile-city"><?php echo htmlspecialchars($city); ?></span>
             <input id="edit-city" type="text" maxlength="45" value="<?php echo htmlspecialchars($city); ?>"
                 style="display: none;">
 
-            <!-- Edit and Action Buttons Container -->
             <div class="button-group">
-                <!-- Edit Button -->
                 <button type="button" id="city-edit-button" onclick="toggleEdit('city')">
                     Edit
                 </button>
 
-                <!-- Save Button -->
                 <button type="button" id="city-save-button" onclick="saveEdit('city')" style="display: none;">
                     Save
                 </button>
 
-                <!-- Cancel Button -->
                 <button type="button" id="city-cancel-button" onclick="cancelEdit('city')" style="display: none;">
                     Cancel
                 </button>
             </div>
 
-            <!-- Privacy Checkbox -->
             <div class="privacy-checkbox-container">
                 <input type="checkbox" class="privacy-checkbox" data-field="pCity"
                     <?php echo ($userPrivacy['pCity'] ? 'checked' : ''); ?> id="privacy-pcity">
@@ -1151,32 +1074,26 @@ $conn->close();
             </div>
         </div>
 
-        <!-- Country -->
         <div class="profile-item">
             <p>Country:</p>
             <span id="profile-country"><?php echo htmlspecialchars($country); ?></span>
             <input id="edit-country" type="text" maxlength="45" value="<?php echo htmlspecialchars($country); ?>"
                 style="display: none;">
 
-            <!-- Edit and Action Buttons Container -->
             <div class="button-group">
-                <!-- Edit Button -->
                 <button type="button" id="country-edit-button" onclick="toggleEdit('country')">
                     Edit
                 </button>
 
-                <!-- Save Button -->
                 <button type="button" id="country-save-button" onclick="saveEdit('country')" style="display: none;">
                     Save
                 </button>
 
-                <!-- Cancel Button -->
                 <button type="button" id="country-cancel-button" onclick="cancelEdit('country')" style="display: none;">
                     Cancel
                 </button>
             </div>
 
-            <!-- Privacy Checkbox -->
             <div class="privacy-checkbox-container">
                 <input type="checkbox" class="privacy-checkbox" data-field="pCountry"
                     <?php echo ($userPrivacy['pCountry'] ? 'checked' : ''); ?> id="privacy-pcountry">
@@ -1184,32 +1101,26 @@ $conn->close();
             </div>
         </div>
 
-        <!-- Profession -->
         <div class="profile-item">
             <p>Profession:</p>
             <span id="profile-profession"><?php echo htmlspecialchars($profession); ?></span>
             <input id="edit-profession" type="text" maxlength="45" value="<?php echo htmlspecialchars($profession); ?>"
                 style="display: none;">
 
-            <!-- Edit and Action Buttons Container -->
             <div class="button-group">
-                <!-- Edit Button -->
                 <button type="button" id="profession-edit-button" onclick="toggleEdit('profession')">
                     Edit
                 </button>
 
-                <!-- Save Button -->
                 <button type="button" id="profession-save-button" onclick="saveEdit('profession')" style="display: none;">
                     Save
                 </button>
 
-                <!-- Cancel Button -->
                 <button type="button" id="profession-cancel-button" onclick="cancelEdit('profession')" style="display: none;">
                     Cancel
                 </button>
             </div>
 
-            <!-- Privacy Checkbox -->
             <div class="privacy-checkbox-container">
                 <input type="checkbox" class="privacy-checkbox" data-field="Work"
                     <?php echo ($userPrivacy['Work'] ? 'checked' : ''); ?> id="privacy-work">
@@ -1217,18 +1128,13 @@ $conn->close();
             </div>
         </div>
 
-        <!-- Status (No Edit Button) -->
         <div class="profile-item">
             <p>Status:</p>
             <span id="profile-status"><?php echo htmlspecialchars($status); ?></span>
-            <!-- No input field since it's not editable -->
 
-            <!-- Empty Button Group to maintain grid alignment -->
             <div class="button-group">
-                <!-- No buttons for Status -->
             </div>
 
-            <!-- Privacy Checkbox -->
             <div class="privacy-checkbox-container">
                 <input type="checkbox" class="privacy-checkbox" data-field="pStatus"
                     <?php echo ($userPrivacy['pStatus'] ? 'checked' : ''); ?> id="privacy-pstatus">
@@ -1243,20 +1149,13 @@ $conn->close();
     </form>
 <?php endif; ?>
 
-
-
-        <!-- Account Type -->
         <div class="profile-item">
             <p>Account Type:</p>
             <span id="profile-account"><?php echo htmlspecialchars($businessAccount); ?></span>
-            <!-- Empty Button Group to maintain grid alignment -->
             <div class="button-group">
-                <!-- No buttons for Account Type -->
             </div>
 
-            <!-- No Privacy Checkbox for Account Type -->
             <div class="privacy-checkbox-container">
-                <!-- Empty to maintain grid alignment -->
             </div>
         </div>
     </div>

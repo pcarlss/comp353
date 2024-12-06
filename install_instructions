@@ -1,0 +1,178 @@
+Hello Ciara,
+
+The ENCS usernames in this group are
+
+   b_abou,c_nks,h_chausc,p_carlss
+
+You have been given the "group account" hpc353_2 to do your project work
+for this course. "group accounts" are needed so that you can share files
+with your partners easily.
+
+2 email aliases have been setup for your group. Sending email to either
+hpc353_2@encs.concordia.ca or hp_comp353_2@encs.concordia.ca will send email
+to each one of you.
+
+Though you have a group account you do not have to login to it. You have
+been added to the "hpc353_2" linux group and you can write in the following
+directories:
+
+
+    /groups/h/hp_comp353_2       This directory is where you should cd into
+                                 and use while working on the project.
+                                 It is *NOT* available on the web server!
+
+
+    /www/groups/h/hp_comp353_2   This is the directory where you should place
+                                 *ALL* the files to be viewable on the web.
+
+
+You as a user do not have any disk quota on the above directories but the
+linux group "hpc353_2" does. The above directories have the sgid bit set
+(the 's' in 'rws' below) which means that any files or directories created
+below these ones will automatically belong to the "hpc353_2" group
+
+   permissions     owner       group        location
+    drwxrws---    hpc353_2   hpc353_2      /groups/h/hp_comp353_2
+    dr-xrws---    nul-web    hpc353_2      /www/groups/h/hp_comp353_2
+
+(The web server initially runs as "nul-web" before switching to "hpc353_2".)
+
+
+If you change the permissions of any directory under these make sure that
+the 's' bit is on (use "chmod g+s name_of_subdirectory" to do so). If you
+ever get a message that you are over quota please check the permissions of
+the directory you are trying to write into.
+
+The server used for the project runs Scientific Linux 7.9
+The version of MYSQL in use this term is 8.0.22 and PHP is version 7.4.27
+
+You can run the command "mysql" on any linux machine in the faculty.
+
+Your MYSQL username is hpc353_2
+The name of the MYSQL server is hpc353.encs.concordia.ca
+The name of the database you can use is also hpc353_2
+The password for your database is HyperBlinkPunch43  (case sensitive)
+You cannot change this password.
+
+
+To run mysql use the following:
+
+[login] 101 => mysql -h hpc353.encs.concordia.ca -u hpc353_2 -p hpc353_2
+Enter password: HyperBlinkPunch43
+
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 350
+Server version: 8.0.22 Source distribution
+
+Copyright (c) 2000, 2020, Oracle and/or its affiliates. All rights reserved.
+
+Oracle is a registered trademark of Oracle Corporation and/or its
+affiliates. Other names may be trademarks of their respective
+owners.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+mysql> create table employees(SIN dec(9));
+Query OK, 0 rows affected (0.03 sec)
+
+mysql> show tables;
++--------------------+
+| Tables_in_hpc353_2 |
++--------------------+
+| employees          |
++--------------------+
+1 row in set (0.01 sec)
+
+mysql> alter table employees add Name char(25);
+Query OK, 0 rows affected (0.03 sec)
+Records: 0  Duplicates: 0  Warnings: 0
+
+mysql> desc employees;
++-------+--------------+------+-----+---------+-------+
+| Field | Type         | Null | Key | Default | Extra |
++-------+--------------+------+-----+---------+-------+
+| SIN   | decimal(9,0) | YES  |     | NULL    |       |
+| Name  | char(25)     | YES  |     | NULL    |       |
++-------+--------------+------+-----+---------+-------+
+2 rows in set (0.00 sec)
+
+mysql> drop table employees;
+Query OK, 0 rows affected (0.02 sec)
+
+mysql> show tables;
+Empty set (0.00 sec)
+
+mysql> exit
+Bye
+
+
+The User ID  for web access is hpc353_2
+The password for web access is HyperBlinkPunch43
+
+The base URL for your web pages is
+
+    https://hpc353.encs.concordia.ca/
+
+Note: it is https not http! The web server will automatically redirect
+       to https if the URL starts with http.
+
+
+As an example you can create a foo.php in /www/groups/h/hp_comp353_2
+that contains:
+
+<HTML>
+<HEAD>
+   <TITLE>Date/Time Functions Demo</TITLE>
+</HEAD>
+<BODY>
+<H1>Date/Time Functions Demo</H1>
+<P>The current date and time is
+<EM><?echo date("D M d, Y H:i:s", time())?></EM>
+<P>Current PHP version:
+<EM><?echo  phpversion()?></EM>
+</BODY>
+</HTML>
+
+
+Using the URL https://hpc353.encs.concordia.ca/foo.php
+you would see something like
+
+     Date/Time Functions Demo
+
+     The current date and time is Wed Jan 12, 2022 10:10:43
+
+     Current PHP version: 7.4.27
+
+
+If you wish to connect from outside the ENCS network  using either
+the mysql client program, Workbench, or from your own web server you
+will have to use Concordia's VPN. Concordia blocks direct connections.
+
+Please see
+
+   https://www.concordia.ca/ginacody/aits/support/faq/connect-from-home.html
+
+   Option A. Connect to Concordia's VPN
+     Step 2  Connecting to the Concordia Network
+
+on how to setup and connect to Concordia's VPN using your Concordia
+NETNAME and password.
+
+When setting up your workbench connection to your database use
+
+   Standard TCP/IP
+
+   Hostname : hpc353.encs.concordia.ca
+   Port: 3306
+   Username: hpc353_2
+   Default Schema: hpc353_2
+
+Wojciech
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Wojciech Galuszka / UNIX Systems Administrator / ENCS IT
+//    ingenieur, member of l'Ordre des ingenieurs du Quebec
+//    B.Eng //
